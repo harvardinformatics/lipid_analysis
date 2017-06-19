@@ -1,0 +1,19 @@
+{# http://bear-z.com/python/render-bootstrap-3-forms-with-wtforms-and-jinja/ #}
+{% macro render_field(field, p = True) -%}
+    {% if p %} <p> {% endif %}
+    <label for="{{ field.id }}"
+        {% if field.flags.required %}
+            class='control-label required'
+            {% else %}
+            class='control-label'
+        {% endif -%}
+        >{{ field.label.text }}:
+    </label>
+    {{ field(**kwargs) }}
+    {% if field.errors -%}
+        {% for e in field.errors -%}
+            <p class="help-block">{{ e }}</p>
+        {% endfor -%}
+    {% endif -%}
+    {% if p %} </p> {% endif %}
+{%- endmacro %}

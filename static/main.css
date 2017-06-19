@@ -1,0 +1,56 @@
+body {
+    overflow-x:hidden;
+}
+.left-indent-div {
+    padding-left: 100px!important
+}
+.top_buttons {
+    display: block;
+    vertical-align: top!important;
+    overflow: auto
+}
+.content_title {
+    display: block;
+    vertical-align: top!important;
+    overflow: auto
+}
+.bottom_buttons {
+    vertical-align: bottom!important;
+    display: block;
+    overflow: auto
+}
+.page_content {
+    display: block;
+    vertical-align: middle!important;
+    overflow: auto
+}
+.right {
+    float: right ! important;
+}
+.inline-block {
+    display: inline-block ! important ;
+}
+.text-align-right {
+    text-align:right ! important ;
+}
+.red {
+    color: red;
+}
+.disabled {
+    pointer-events: none;
+    cursor: default;
+}
+.container-fluid {
+    clear: both;
+}
+.required:after {
+    color: red;
+    font-weight:bold;
+    content:" *";
+}
+.tall {
+    height: 60px;
+}
+#page_message {
+    color: #2ab289;
+}
