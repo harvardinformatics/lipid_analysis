@@ -3,6 +3,7 @@ from wtforms import (IntegerField, FloatField, StringField,
     TextAreaField, RadioField, BooleanField)
 from wtforms.validators import Optional
 from flask_wtf.file import FileField, FileRequired
+from lipidx import constants as const
 
 
 class ElseOptional(Optional):
@@ -21,15 +22,18 @@ class LipidAnalysisForm(Form):
     'It.', 'z', 'Delta(Da)', 'mScore', 'Occupy']
 
     file_msg = 'Must submit a file to process'
-    retention_time_filter = IntegerField('Retention Time', default = 3)
-    group_pq_filter = FloatField('GroupPQ', default = 0.8)
-    group_sn_filter = IntegerField('GroupS/N', default = 100)
-    group_area_filter = IntegerField('Group Area', default = 0)
-    group_height_filter = IntegerField('Group Height', default = 0)
+    retention_time_filter = IntegerField('Retention Time', default =
+            const.RET_TIME_DEFAULT)
+    group_pq_filter = FloatField('GroupPQ', default = const.GROUP_PQ_DEFAULT)
+    group_sn_filter = IntegerField('GroupS/N', default = const.GROUP_SN_DEFAULT)
+    group_area_filter = IntegerField('Group Area', default = const.GROUP_AREA_DEFAULT)
+    group_height_filter = IntegerField('Group Height', default =
+            const.GROUP_HEIGHT_DEFAULT)
     file1 = FileField('File 1', [FileRequired()])
     file2 = FileField('File 2')
     blank = StringField('Name of the blank (exp. c, s1, s2)')
-    mult_factor = IntegerField('Blank Multiplication Factor', default = 3)
+    mult_factor = IntegerField('Blank Multiplication Factor', default =
+            const.MULT_FACTOR_DEFAULT)
     remove_cols = TextAreaField('Columns to remove (comma seperated)', default =
             ', '.join(cols_to_remove))
     normalize = RadioField('Normalization', choices = [('none', 'None'),

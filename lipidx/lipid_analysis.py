@@ -11,9 +11,12 @@ import logging
 class LipidAnalysis:
     def __init__ (self, paths, debug = False):
         self.paths = paths
+        # add cols to results to show pre normalized values
         self.debug = debug
         self.area_start = 'Area['
         self.groups = {}
+        # cols should be the same in all files
+        # col names will be taken from first file
         self.rows = self.get_rows_from_files(self.paths)
 
         # file paths, eventualy these may not be hardcoded
@@ -50,12 +53,15 @@ class LipidAnalysis:
                             # remove trailing newline
                             row[(len(row) - 1)] = row[(len(row) - 1)].strip('\n')
                             row_d = OrderedDict(zip(row_cols, row))
+                            # calc retention time
                             ret_time = numpy.mean(self.list_col_type(row_d, 'GroupTopPos'))
                             row_d['ret_time'] = ret_time
                             row_d.move_to_end('ret_time', last=False)
+                            # unique name for row LipidIon + ret_time
                             name = row_d['LipidIon'] + '_' + str(ret_time)
                             row_d['name'] = name
                             row_d.move_to_end('name', last=False)
+                            # remove excluded cols
                             row_d = self.clean_cols(cols, row_cols, row_d)
                             rows[name] = row_d
                     cols = row_cols
