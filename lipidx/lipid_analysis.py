@@ -9,12 +9,12 @@ from collections import OrderedDict
 import logging
 
 class LipidAnalysis:
-    def __init__ (self, paths):
+    def __init__ (self, paths, debug = False):
         self.paths = paths
+        self.debug = debug
         self.area_start = 'Area['
         self.groups = {}
         self.rows = self.get_rows_from_files(self.paths)
-        self.debug = ('debug' in request.args)
 
         # file paths, eventualy these may not be hardcoded
         self.root_path = app.config['UPLOAD_FOLDER'] + '/'
