@@ -4,7 +4,7 @@ import numpy
 import zipfile
 from flask import request
 from flask.ext import excel
-from config import Config
+from flask import current_app as app
 from collections import OrderedDict
 import logging
 
@@ -17,9 +17,9 @@ class LipidAnalysis:
         self.debug = ('debug' in request.args)
 
         # file paths, eventualy these may not be hardcoded
-        self.root_path = Config.UPLOAD_FOLDER
+        self.root_path = app.config['UPLOAD_FOLDER'] + '/'
         lipid_class_file = 'lipidKey.csv'
-        self.lipid_class_path = Config.BASE_DIR + '/' + lipid_class_file
+        self.lipid_class_path = app.config['BASE_DIR'] + '/' + lipid_class_file
         self.lipid_results_file = 'lipid_analysis.csv'
         self.lipid_results_path = self.root_path + self.lipid_results_file
         self.subclass_file = 'subclass_stats.csv'

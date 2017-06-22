@@ -1,24 +1,10 @@
-from flask import (Flask, request, current_app, render_template,
+from flask import (request, current_app, render_template,
     send_from_directory)
-from flask.ext.bootstrap import Bootstrap
-from lipid_analysis import LipidAnalysis
-from forms import LipidAnalysisForm
-from config import Config
+from lipidx.lipid_analysis import LipidAnalysis
+from lipidx.forms import LipidAnalysisForm
+from lipidx import app
 import logging
 import sys, os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lipid_analysis.log'))
-logging.basicConfig(filename=os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-                                                            'lipid_analysis.log'), level=logging.DEBUG)
-app = Flask(__name__)
-conf = Config()
-app.config.from_object(conf)
-bootstrap = Bootstrap()
-bootstrap.init_app(app)
-
-if __name__ == '__main__':
-    app.run()
 
 @app.route('/')
 def hello():
@@ -26,13 +12,12 @@ def hello():
 
 @app.route('/lipid_analysis/', methods=['GET', 'POST'])
 def lipid_analysis():
-    config = Config()
     form_data = request.form
     form = LipidAnalysisForm()
     zip_path = None
     debug = 'debug' in request.args
     if form.validate_on_submit():
-        root_path = Config.UPLOAD_FOLDER
+        root_path = app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'file1.txt')
         file2 = request.files[form.file2.name]
@@ -60,7 +45,7 @@ def lipid_analysis():
 
 @app.route('/file/<filename>')
 def file(filename):
-    file_dir = Config.UPLOAD_FOLDER
+    file_dir = app.config['UPLOAD_FOLDER']
     return send_from_directory(file_dir, filename)
 
 

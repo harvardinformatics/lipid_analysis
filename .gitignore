@@ -1,0 +1,5 @@
+lipidx/files/*
+!lipidx/files/README.md
+lipidx/__pycache__/*
+*.pyc
+config.py
