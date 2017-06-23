@@ -85,12 +85,14 @@ class LipidAnalysis:
     def write_results(self):
         # make sure results are sorted by key
         res = [x for y, x in sorted(self.rows.items(), key=lambda t: t[0].lower())]
-        self.write_csv(self.lipid_results_path, self.get_cols(), res)
+        self.write_csv(path, self.get_cols(), res)
         # create a zip file for lipids and stats
         z = zipfile.ZipFile(self.zip_path, "w")
         z.write(self.lipid_results_path, self.lipid_results_file)
-        z.write(self.subclass_path, self.subclass_file)
-        z.write(self.class_path, self.class_file)
+        if os.path.exists(self.class_path):
+            z.write(self.class_path, self.class_file)
+        if os.path.exists(self.subclass_path):
+            z.write(self.subclass_path, self.subclass_file)
         z.close
         return self.zip_path
 

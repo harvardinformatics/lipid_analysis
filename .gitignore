@@ -4,3 +4,4 @@ lipidx/__pycache__/*
 *.pyc
 config.py
 *.log
+.DS_Store
