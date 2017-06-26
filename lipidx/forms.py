@@ -17,9 +17,7 @@ class ElseOptional(Optional):
             super(ElseOptional, self).__call__(form, field)
 
 class LipidAnalysisForm(Form):
-    cols_to_remove = ['ARatio', 'HRatio', 'ADiff', 'HDiff', 'GroupHeight', 'HeightRSD',
-    'Height', 'NormArea', 'NormHeight', 'Hwhm(L)', 'Hwhm(R)', 'AreaScore', 'DataId', 'Scan',
-    'It.', 'z', 'Delta(Da)', 'mScore', 'Occupy']
+    cols_to_remove = const.COLS_TO_REMOVE
 
     file_msg = 'Must submit a file to process'
     retention_time_filter = IntegerField('Retention Time', default =

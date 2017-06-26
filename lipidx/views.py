@@ -26,7 +26,7 @@ def lipid_analysis():
         file2_path = root_path + 'file2.txt'
 
         la = LipidAnalysis([file1_path, file2_path], debug)
-        '''la.filter_rows(form.data['retention_time_filter'],
+        la.filter_rows(form.data['retention_time_filter'],
                 form.data['group_pq_filter'],
                 form.data['group_sn_filter'],
                 form.data['group_area_filter'],
@@ -35,7 +35,7 @@ def lipid_analysis():
         la.subtract_blank(form.data['blank'], form.data['mult_factor'])
         la.remove_columns(form.data['remove_cols'])
         la.normalize(form.data)
-        subclass_stats, class_stats = la.calc_class_stats(form.data['class_stats'])'''
+        subclass_stats, class_stats = la.calc_class_stats(form.data['class_stats'])
         zip_path = la.write_results()
 
     context = {'params': {}}

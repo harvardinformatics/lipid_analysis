@@ -30,62 +30,103 @@ class LididxTests(unittest.TestCase):
         with app.app_context():
             la = LipidAnalysis([self.sample_data_dir + 'neg_short.txt', self.sample_data_dir + 'pos_short.txt'])
             expected = self.csv_to_row_dict(self.sample_data_dir +
-            'init_results.csv')
+            'init_expected.csv')
             res, msg = self.diff_dicts(expected, la.rows)
         self.assertTrue(res, msg)
 
     def test_filter_rows_default(self):
         res = False
-        basedir = os.path.abspath( os.path.dirname( __file__ ) ) + '/'
         with app.app_context():
-            la = LipidAnalysis([basedir + 'pos_short.txt', basedir + 'neg_short.txt'])
+            la = self.get_inst_from_step('init_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'filter_expected.csv')
             la.filter_rows(const.RET_TIME_DEFAULT,
                     const.GROUP_PQ_DEFAULT,
                     const.GROUP_SN_DEFAULT,
                     const.GROUP_AREA_DEFAULT,
                     const.GROUP_HEIGHT_DEFAULT
             )
-            # confirm filtered row count is correct
-            res = (len(la.rows) == 24)
-        assert res
+            res, msg = self.diff_dicts(expected, la.rows)
+        self.assertTrue(res, msg)
 
     def test_subtract_blank(self):
         res = False
-        basedir = os.path.abspath( os.path.dirname( __file__ ) ) + '/'
         with app.app_context():
-            la = LipidAnalysis([basedir + 'pos_short.txt', basedir + 'neg_short.txt'])
-            la.filter_rows(const.RET_TIME_DEFAULT,
-                    const.GROUP_PQ_DEFAULT,
-                    const.GROUP_SN_DEFAULT,
-                    const.GROUP_AREA_DEFAULT,
-                    const.GROUP_HEIGHT_DEFAULT
-            )
+            la = self.get_inst_from_step('filter_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'subtract_expected.csv')
             la.subtract_blank('c', const.MULT_FACTOR_DEFAULT)
-            print(len(la.rows))
-            # confirm filtered row count is correct
-            res = (len(la.rows) == 24)
-        assert res
+            res, msg = self.diff_dicts(expected, la.rows)
+        self.assertTrue(res, msg)
+
+    def test_remove_columns(self):
+        res = False
+        with app.app_context():
+            la = self.get_inst_from_step('subtract_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'remove_expected.csv')
+            la.remove_columns(', '.join(const.COLS_TO_REMOVE))
+            test_cols = la.rows[next(iter(la.rows))].keys()
+            expected_cols = expected[next(iter(expected))].keys()
+            same, msg = self.diff_keys(expected_cols, test_cols)
+        self.assertTrue(same, msg)
+
+    def test_normalize(self):
+        res = False
+        with app.app_context():
+            la = self.get_inst_from_step('remove_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'normalize_expected.csv')
+            la.normalize({'normalize': 'intensity'})
+            res, msg = self.diff_dicts(expected, la.rows)
+        self.assertTrue(res, msg)
+
+    def test_class_stats(self):
+        res = False
+        with app.app_context():
+            # no normalization is the default, use remove_expected to init rows
+            la = self.get_inst_from_step('remove_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'class_stats_expected.csv', 'class')
+            la.calc_class_stats({'class_stats':'y'})
+            res, msg = self.diff_dicts(expected, la.class_dict)
+        self.assertTrue(res, msg)
+
+    def test_subclass_stats(self):
+        res = False
+        with app.app_context():
+            # no normalization is the default, use remove_expected to init rows
+            la = self.get_inst_from_step('remove_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'subclass_stats_expected.csv', 'subclass')
+            la.calc_class_stats({'class_stats':'y'})
+            res, msg = self.diff_dicts(expected, la.subclass_dict)
+        self.assertTrue(res, msg)
 
     # helper function get csv file into same format as rows for diff
-    def csv_to_row_dict(self, csv_file):
+    def csv_to_row_dict(self, csv_file, key_on = 'name'):
         row_dict = {}
         with open(csv_file, mode='r') as f:
             rows = csv.DictReader(f)
-            row_dict = {r['name']: r for r in rows}
+            row_dict = {r[key_on]: r for r in rows}
         return row_dict
 
-    def diff_dicts(self, exp, test):
-        exp_keys = set(exp.keys())
-        test_keys = set(test.keys())
+    def diff_keys(self, exp_keys, test_keys):
+        exp_keys = set(exp_keys)
+        test_keys = set(test_keys)
         not_expected = test_keys - exp_keys
         missing = exp_keys - test_keys
         same = (missing == set({}) and not_expected == set({}))
         msg = ''
-        if same:
-            same, msg = self.diff_rows(exp, test)
-        else:
+        if not same:
             msg = ('not expected: ' + json.dumps(list(not_expected)) + '\n missing: '
                     + json.dumps(list(missing)))
+        return same, msg
+
+    def diff_dicts(self, exp, test):
+        same, msg = self.diff_keys(exp.keys(), test.keys())
+        if same:
+            same, msg = self.diff_rows(exp, test)
         return same, msg
 
     def diff_rows(self, exp, test):
@@ -101,13 +142,21 @@ class LididxTests(unittest.TestCase):
                     elif col in test[key] and str(test[key][col]) != str(val):
                         if col not in errors:
                             errors[col] = {'missing':[], 'diff':[]}
-                        errors[col]['diff'].append(key)
+                        errors[col]['diff'].append(key + ' ' + str(val) + ' vs ' +
+                                str(test[key][col]))
 
         same = (errors == {})
         msg = ''
         if errors:
             msg = 'row errors: ' + json.dumps(errors)
         return same, msg
+
+    def get_inst_from_step(self, prev_step_file):
+        # pass empty path and then fill rows with prev step results
+        la = LipidAnalysis([])
+        rows = self.csv_to_row_dict(self.sample_data_dir + prev_step_file)
+        la.rows = rows
+        return la
 
 if __name__ == '__main__':
     unittest.main()
