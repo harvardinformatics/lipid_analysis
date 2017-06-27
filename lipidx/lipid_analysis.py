@@ -203,7 +203,9 @@ class LipidAnalysis:
                         # faster filtering
                         if lipid_charge not in ion_dups:
                             ion_dups[lipid_charge] = []
-                        ion_dups[lipid_charge].append(prev_ret)
+                        if prev_ret not in ion_dups[lipid_charge]:
+                            ion_dups[lipid_charge].append(prev_ret)
+                        break
                 if not found:
                     # start new ret_time bucket
                     lc_grps[lipid_charge][ret_time] = [name]
