@@ -2,6 +2,7 @@ import csv
 import os
 import numpy
 import zipfile
+import re
 from flask import request
 from flask.ext import excel
 from flask import current_app as app
@@ -70,7 +71,15 @@ class LipidAnalysis:
                             name = row_d['LipidIon'] + '_' + str(ret_time)
                             row_d['name'] = name
                             row_d.move_to_end('name', last=False)
-                            rows[name] = row_d
+                            if name in rows: # rare case
+                                # if lipid has same name then keep the one with
+                                # greater area
+                                avg_areas = self.list_col_type(row_d, self.area_start)
+                                avg_prev_areas = self.list_col_type(rows[name], self.area_start)
+                                if avg_areas > avg_prev_areas:
+                                    rows[name] = row_d
+                            else: # add the new row
+                                rows[name] = row_d
                 if not cols:
                     cols = row_cols
         return rows
@@ -166,9 +175,55 @@ class LipidAnalysis:
     def list_col_type(self, row, col_type):
         lst = []
         for name, val in row.items():
-            if col_type in name:
+            if name.startswith(col_type):
                 lst.append(float(val))
         return lst
+
+    def group_ions(self, within):
+        # for lipid charges with different ions but ret time within 0.9 only the
+        # lipid ion with the greatest area will be kept
+        lc_grps = {}
+        ion_dups = {}
+        # group rows by lipid charge and ret time
+        for name, row in self.rows.items():
+            grps = re.search('(.*[+,-]).*', name)
+            lipid_charge = grps.group(1)
+            ret_time = row['ret_time']
+            if lipid_charge not in lc_grps:
+                # for ret_time store a list of lipid rows that are within 0.9
+                lc_grps[lipid_charge] = {ret_time: [name]}
+            else:
+                found = False
+                # see if curr ret time is within 0.9 of any others in this group
+                for prev_ret in lc_grps[lipid_charge]:
+                    if abs(ret_time - prev_ret) < within:
+                        lc_grps[lipid_charge][prev_ret].append(name)
+                        found = True
+                        # keep list of charges and ret times that have dups, for
+                        # faster filtering
+                        if lipid_charge not in ion_dups:
+                            ion_dups[lipid_charge] = []
+                        ion_dups[lipid_charge].append(prev_ret)
+                if not found:
+                    # start new ret_time bucket
+                    lc_grps[lipid_charge][ret_time] = [name]
+
+        for lc, r_times in ion_dups.items():
+            # loop through dups and keep only the one with largest area
+            for r in r_times:
+                max_area = 0
+                keep = None
+                for k in lc_grps[lc][r]:
+                    areas = self.list_col_type(self.rows[k], self.area_start)
+                    avg_area = numpy.mean(areas)
+                    if avg_area > max_area:
+                        max_area = avg_area
+                        keep = k
+                for j in lc_grps[lc][r]:
+                    # delete non-max areas of dup ions
+                    if j != keep:
+                        del(self.rows[j])
+
 
     def filter_rows(self, ret_time_fil, group_pq_fil, group_sn_fil, group_area_fil,
             group_height_fil):
