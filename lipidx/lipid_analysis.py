@@ -196,7 +196,7 @@ class LipidAnalysis:
                 found = False
                 # see if curr ret time is within 0.9 of any others in this group
                 for prev_ret in lc_grps[lipid_charge]:
-                    if abs(ret_time - prev_ret) < within:
+                    if abs(float(ret_time) - float(prev_ret)) < within:
                         lc_grps[lipid_charge][prev_ret].append(name)
                         found = True
                         # keep list of charges and ret times that have dups, for

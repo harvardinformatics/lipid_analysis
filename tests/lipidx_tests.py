@@ -34,10 +34,20 @@ class LididxTests(unittest.TestCase):
             res, msg = self.diff_dicts(expected, la.rows)
         self.assertTrue(res, msg)
 
-    def test_filter_rows_default(self):
+    def test_group_ions_diff(self):
         res = False
         with app.app_context():
             la = self.get_inst_from_step('init_expected.csv')
+            expected = self.csv_to_row_dict(self.sample_data_dir +
+            'group_ions_expected.csv')
+            la.group_ions(form.ION_GROUP_WITHIN_DEFAULT)
+            res, msg = self.diff_dicts(expected, la.rows)
+        self.assertTrue(res, msg)
+
+    def test_filter_rows_default(self):
+        res = False
+        with app.app_context():
+            la = self.get_inst_from_step('group_ions_expected.csv')
             expected = self.csv_to_row_dict(self.sample_data_dir +
             'filter_expected.csv')
             la.filter_rows(form.RET_TIME_DEFAULT,
@@ -139,11 +149,17 @@ class LididxTests(unittest.TestCase):
                         if col not in errors:
                             errors[col] = {'missing':[], 'diff':[]}
                         errors[col]['missing'].append(key)
-                    elif col in test[key] and str(test[key][col]) != str(val):
-                        if col not in errors:
-                            errors[col] = {'missing':[], 'diff':[]}
-                        errors[col]['diff'].append(key + ' ' + str(val) + ' vs ' +
-                                str(test[key][col]))
+                    elif col in test[key]:
+                        val_str = str(val)
+                        test_str = str(test[key][col])
+                        if len(val_str) > 1 and len(test_str) > 1:
+                            val_str = val_str[0:-2]
+                            test_str = test_str[0:-2]
+                        if test_str != val_str:
+                            if col not in errors:
+                                errors[col] = {'missing':[], 'diff':[]}
+                            errors[col]['diff'].append(key + ' ' + str(val) + ' vs ' +
+                                    str(test[key][col]))
 
         same = (errors == {})
         msg = ''
