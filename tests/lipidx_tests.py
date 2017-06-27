@@ -3,7 +3,7 @@ import os
 import csv
 import json
 from lipidx.lipid_analysis import LipidAnalysis
-from lipidx import constants as const
+from lipidx.forms import LipidAnalysisForm as form
 from lipidx import app
 
 class LididxTests(unittest.TestCase):
@@ -40,11 +40,11 @@ class LididxTests(unittest.TestCase):
             la = self.get_inst_from_step('init_expected.csv')
             expected = self.csv_to_row_dict(self.sample_data_dir +
             'filter_expected.csv')
-            la.filter_rows(const.RET_TIME_DEFAULT,
-                    const.GROUP_PQ_DEFAULT,
-                    const.GROUP_SN_DEFAULT,
-                    const.GROUP_AREA_DEFAULT,
-                    const.GROUP_HEIGHT_DEFAULT
+            la.filter_rows(form.RET_TIME_DEFAULT,
+                    form.GROUP_PQ_DEFAULT,
+                    form.GROUP_SN_DEFAULT,
+                    form.GROUP_AREA_DEFAULT,
+                    form.GROUP_HEIGHT_DEFAULT
             )
             res, msg = self.diff_dicts(expected, la.rows)
         self.assertTrue(res, msg)
@@ -55,7 +55,7 @@ class LididxTests(unittest.TestCase):
             la = self.get_inst_from_step('filter_expected.csv')
             expected = self.csv_to_row_dict(self.sample_data_dir +
             'subtract_expected.csv')
-            la.subtract_blank('c', const.MULT_FACTOR_DEFAULT)
+            la.subtract_blank('c', form.MULT_FACTOR_DEFAULT)
             res, msg = self.diff_dicts(expected, la.rows)
         self.assertTrue(res, msg)
 
@@ -65,7 +65,7 @@ class LididxTests(unittest.TestCase):
             la = self.get_inst_from_step('subtract_expected.csv')
             expected = self.csv_to_row_dict(self.sample_data_dir +
             'remove_expected.csv')
-            la.remove_columns(', '.join(const.COLS_TO_REMOVE))
+            la.remove_columns(', '.join(form.COLS_TO_REMOVE))
             test_cols = la.rows[next(iter(la.rows))].keys()
             expected_cols = expected[next(iter(expected))].keys()
             same, msg = self.diff_keys(expected_cols, test_cols)

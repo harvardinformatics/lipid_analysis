@@ -3,7 +3,6 @@ from wtforms import (IntegerField, FloatField, StringField,
     TextAreaField, RadioField, BooleanField)
 from wtforms.validators import Optional
 from flask_wtf.file import FileField, FileRequired
-from lipidx import constants as const
 
 
 class ElseOptional(Optional):
@@ -17,23 +16,34 @@ class ElseOptional(Optional):
             super(ElseOptional, self).__call__(form, field)
 
 class LipidAnalysisForm(Form):
-    cols_to_remove = const.COLS_TO_REMOVE
+    ION_GROUP_WITHIN_DEFAULT = 0.9
+    RET_TIME_DEFAULT = 3
+    GROUP_PQ_DEFAULT = 0.8
+    GROUP_SN_DEFAULT = 100
+    GROUP_AREA_DEFAULT = 0
+    GROUP_HEIGHT_DEFAULT = 0
+    MULT_FACTOR_DEFAULT = 3
+
+    COLS_TO_REMOVE = ['ARatio', 'HRatio', 'ADiff', 'HDiff', 'GroupHeight', 'HeightRSD',
+        'Height', 'NormArea', 'NormHeight', 'Hwhm(L)', 'Hwhm(R)', 'AreaScore', 'DataId', 'Scan',
+        'It.', 'z', 'Delta(Da)', 'mScore', 'Occupy']
 
     file_msg = 'Must submit a file to process'
-    retention_time_filter = IntegerField('Retention Time', default =
-            const.RET_TIME_DEFAULT)
-    group_pq_filter = FloatField('GroupPQ', default = const.GROUP_PQ_DEFAULT)
-    group_sn_filter = IntegerField('GroupS/N', default = const.GROUP_SN_DEFAULT)
-    group_area_filter = IntegerField('Group Area', default = const.GROUP_AREA_DEFAULT)
-    group_height_filter = IntegerField('Group Height', default =
-            const.GROUP_HEIGHT_DEFAULT)
     file1 = FileField('File 1', [FileRequired()])
     file2 = FileField('File 2')
+    group_ions_within = FloatField('Group ions with same lipid charge within ret time', default = ION_GROUP_WITHIN_DEFAULT)
+    retention_time_filter = IntegerField('Retention Time', default =
+            RET_TIME_DEFAULT)
+    group_pq_filter = FloatField('GroupPQ', default = GROUP_PQ_DEFAULT)
+    group_sn_filter = IntegerField('GroupS/N', default = GROUP_SN_DEFAULT)
+    group_area_filter = IntegerField('Group Area', default = GROUP_AREA_DEFAULT)
+    group_height_filter = IntegerField('Group Height', default =
+            GROUP_HEIGHT_DEFAULT)
     blank = StringField('Name of the blank (exp. c, s1, s2)')
     mult_factor = IntegerField('Blank Multiplication Factor', default =
-            const.MULT_FACTOR_DEFAULT)
+            MULT_FACTOR_DEFAULT)
     remove_cols = TextAreaField('Columns to remove (comma seperated)', default =
-            ', '.join(cols_to_remove))
+            ', '.join(COLS_TO_REMOVE))
     normalize = RadioField('Normalization', choices = [('none', 'None'),
     ('intensity', 'Sum of area intensities'), ('values', 'Enter values')], default = 'none')
     normal_c = StringField('c')
