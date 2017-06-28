@@ -152,9 +152,18 @@ class LididxTests(unittest.TestCase):
                     elif col in test[key]:
                         val_str = str(val)
                         test_str = str(test[key][col])
+                        # trying to get floating pt rounded numbers to match is
+                        # a pain, there is a bunch of logic here to try and
+                        # ignore insignificant digit differences
                         if len(val_str) > 1 and len(test_str) > 1:
-                            val_str = val_str[0:-2]
-                            test_str = test_str[0:-2]
+                            val_chop = 2
+                            test_chop = 2
+                            if len(val_str) > len(test_str) and '.' in val_str:
+                                val_chop += (len(val_str)-len(test_str))
+                            if len(val_str) < len(test_str) and '.' in val_str:
+                                test_chop += (len(test_str)-len(val_str))
+                            val_str = val_str[0:-val_chop]
+                            test_str = test_str[0:-test_chop]
                         if test_str != val_str:
                             if col not in errors:
                                 errors[col] = {'missing':[], 'diff':[]}

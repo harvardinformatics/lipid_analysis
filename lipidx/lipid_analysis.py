@@ -11,11 +11,12 @@ import logging
 
 class LipidAnalysis:
 
-    ROUND_TO = 5
+    ROUND_TO = 2
+    POST_NORMAL_ROUND = 8
 
     def __init__ (self, paths, debug = False):
         self.paths = paths
-        # add cols to results to show pre normalized values
+        # debug adds cols to results to show pre normalized values
         self.debug = debug
         self.area_start = 'Area['
         self.groups = {}
@@ -25,7 +26,6 @@ class LipidAnalysis:
         # filled in calc_class_stats
         self.class_dict = {}
         self.subclass_dict = {}
-
 
         # file paths, eventualy these may not be hardcoded
         self.root_path = app.config['UPLOAD_FOLDER'] + '/'
@@ -63,9 +63,9 @@ class LipidAnalysis:
                             row_d = OrderedDict(zip(row_cols, row))
                             # cols from all files must be the same
                             row_d = self.limit_row_cols(cols, row_d)
-                            # calc retention time
+                            # calc retention time: average of GroupTopPos
                             ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
-                            row_d['ret_time'] = ret_time
+                            row_d['ret_time'] = ret_time # add to row
                             row_d.move_to_end('ret_time', last=False)
                             # unique name for row LipidIon + ret_time
                             name = row_d['LipidIon'] + '_' + str(ret_time)
@@ -131,15 +131,19 @@ class LipidAnalysis:
             blank_start = self.area_start + blank
             blank_cols = self.get_cols(blank_start)
             for name, row in self.rows.items():
+                # calculate avg blank
                 avg_blank = self.calculate_avg_blank(blank_cols, row)
                 include_row = False
+                # subtract blank * mult_factor from all area cols
                 for col in area_cols:
                     sub = round((float(row[col]) - (avg_blank * mult_factor)),
                             self.ROUND_TO)
-                    if sub < 0: # no neg areas
+                    # negative areas are not permited, neg becomes 0
+                    if sub < 0:
                         sub = 0
                     row[col] = sub
-                    if sub > 0:
+                    # only include row if atleast one non blank area is non-zero
+                    if sub > 0 and col not in blank_cols:
                         include_row = True
                 if include_row:
                     row['avg_blank'] = avg_blank
@@ -147,23 +151,22 @@ class LipidAnalysis:
             self.rows = subtracted
 
     def calculate_avg_blank(self, blank_cols, row):
-            avg_blank = 0
+            blank_vals = []
             for col in blank_cols:
-                avg_blank += float(row[col])
-            return round(avg_blank / len(blank_cols), self.ROUND_TO)
+                blank_vals.append(float(row[col]))
+            return round(numpy.mean(blank_vals), self.ROUND_TO)
 
     def remove_columns(self, remove_cols):
         if self.rows:
+            # ensure user entered cols are lowercase and without spaces
             remove_cols = [x.strip().lower() for x in remove_cols.split(',')]
             clean_selected = {}
             removed_cols = []
-            clean_cols = []
             for col in self.get_cols():
                 prefix = col.split('[')[0]
+                # remove cols contains the start of the column name before [
                 if prefix.lower() in remove_cols:
                     removed_cols.append(col)
-                else:
-                    clean_cols.append(col)
             for name, row in self.rows.items():
                 new_row = OrderedDict()
                 for col, val in row.items():
@@ -173,6 +176,7 @@ class LipidAnalysis:
             self.rows = clean_selected
 
     def list_col_type(self, row, col_type):
+        # get a list of all cols that startwith col_type
         lst = []
         for name, val in row.items():
             if name.startswith(col_type):
@@ -186,6 +190,7 @@ class LipidAnalysis:
         ion_dups = {}
         # group rows by lipid charge and ret time
         for name, row in self.rows.items():
+            # capture lipid_charge
             grps = re.search('(.*[+,-]).*', name)
             lipid_charge = grps.group(1)
             ret_time = row['ret_time']
@@ -195,18 +200,26 @@ class LipidAnalysis:
             else:
                 found = False
                 # see if curr ret time is within 0.9 of any others in this group
+                # if so choose the closest
+                min_diff = None
+                min_prev_ret = None
                 for prev_ret in lc_grps[lipid_charge]:
-                    if abs(float(ret_time) - float(prev_ret)) < within:
-                        lc_grps[lipid_charge][prev_ret].append(name)
-                        found = True
-                        # keep list of charges and ret times that have dups, for
-                        # faster filtering
-                        if lipid_charge not in ion_dups:
-                            ion_dups[lipid_charge] = []
-                        if prev_ret not in ion_dups[lipid_charge]:
-                            ion_dups[lipid_charge].append(prev_ret)
-                        break
-                if not found:
+                    diff = abs(float(ret_time) - float(prev_ret))
+                    if diff < within:
+                        if not min_diff or min_diff > diff:
+                            min_diff = diff
+                            min_prev_ret = prev_ret
+                            found = True
+                if found:
+                    # add to closest prev_ret group
+                    lc_grps[lipid_charge][min_prev_ret].append(name)
+                    # keep list of charges and ret times that have dups, for
+                    # faster filtering
+                    if lipid_charge not in ion_dups:
+                        ion_dups[lipid_charge] = []
+                    if min_prev_ret not in ion_dups[lipid_charge]:
+                        ion_dups[lipid_charge].append(min_prev_ret)
+                else:
                     # start new ret_time bucket
                     lc_grps[lipid_charge][ret_time] = [name]
 
@@ -225,7 +238,6 @@ class LipidAnalysis:
                     # delete non-max areas of dup ions
                     if j != keep:
                         del(self.rows[j])
-
 
     def filter_rows(self, ret_time_fil, group_pq_fil, group_sn_fil, group_area_fil,
             group_height_fil):
@@ -259,48 +271,55 @@ class LipidAnalysis:
                 return False
         return True
 
-    def normalize(self, data):
+    def normalize(self, form_data):
+        # most common is to not normalize
+        # or one can use avg intensity calculated from data
+        # or input manual values
         if self.rows:
             normal = self.rows
-            if data['normalize'] != 'none':
+            if form_data['normalize'] != 'none':
                 area_cols = self.get_cols(self.area_start)
-                if data['normalize'] == 'values':
+                # use manual values
+                if form_data['normalize'] == 'values':
                     for name, row in normal.items():
                         for col in area_cols:
                             group, num = self.get_group_from_col(col)
                             form_name = 'normal_' + group
-                            if data[form_name]:
-                                if self.debug:
+                            # TODO: what if they don't fill it out
+                            if form_data[form_name]:
+                                if self.debug: # put old values in rows to debug
                                     normal[name][col + 'old'] = row[col]
-                                    normal[name][col + 'div'] = float(data[form_name])
-                                normal[name][col] = round(row[col] / float(data[form_name]), self.ROUND_TO)
-                elif data['normalize'] == 'intensity':
+                                    normal[name][col + 'div'] = float(form_data[form_name])
+                                normal[name][col] = round(row[col] / float(form_data[form_name]), self.POST_NORMAL_ROUND)
+                # use calculated intensity
+                elif form_data['normalize'] == 'intensity':
                     intensities = self.calc_intensities(area_cols)
                     for name, row in normal.items():
                         for col in area_cols:
                             sam = self.get_sample_from_col(col)
+                            # TODO: error case if no intensity?
                             if intensities[sam] > 0:
                                 if self.debug:
                                     normal[name][col + 'old'] = row[col]
                                     normal[name][col + 'div'] = intensities[sam]
+                                # TODO: 8 dec place
                                 normal[name][col] = round(float(row[col])/intensities[sam],
-                                self.ROUND_TO)
+                                self.POST_NORMAL_ROUND)
                 self.recalc_cols()
             self.rows = normal
 
     def calc_intensities(self, area_cols):
+        # calc average from area_cols (intensity)
         intensities = {}
-        cnt = len(self.rows)
         for name, row in self.rows.items():
             for col in area_cols:
                 sam = self.get_sample_from_col(col)
                 if sam not in intensities:
-                    intensities[sam] = 0
-                intensities[sam] += float(row[col])
-        for sam, i_sum in intensities.items():
-            intensities[sam] = round(i_sum / cnt, self.ROUND_TO)
+                    intensities[sam] = []
+                intensities[sam].append(float(row[col]))
+        for sam, sum_lst in intensities.items():
+            intensities[sam] = round(numpy.mean(intensities[sam]), self.POST_NORMAL_ROUND)
         return intensities
-
 
     def get_groups(self):
         groups = OrderedDict()
@@ -327,6 +346,7 @@ class LipidAnalysis:
         self.groups = self.get_groups()
         for name, row in self.rows.items():
             stats = OrderedDict()
+            # for each group recalc the avg and std from areas
             for group, nums in self.groups.items():
                 if group not in stats:
                     stats[group] = []
@@ -334,52 +354,66 @@ class LipidAnalysis:
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
             for group, val_lst in stats.items():
-                self.rows[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.ROUND_TO)
-                self.rows[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst),
-                self.ROUND_TO)
+                self.rows[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
+                self.rows[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
 
     def calc_class_stats(self, opt_class_stats):
         sub_success = True
         class_success = True
+        # if class stats are requested
         if opt_class_stats:
-            self.class_key = self.load_lipid_classes()
+            self.class_keys = self.load_lipid_classes()
             class_stats = {}
             subclass_stats = {}
             for name, row in self.rows.items():
-                sc = row['Class']
-                if sc in self.class_key:
-                    cl = self.class_key[sc]['class']
-                    if sc not in subclass_stats:
-                        subclass_stats[sc] = {}
-                        if cl not in class_stats:
-                            class_stats[cl] = {}
-                    subclass_stats[sc] = self.group_stats(row,
-                            subclass_stats[sc])
-                    class_stats[cl] = self.group_stats(row,
-                            class_stats[cl])
-            subclass_cols, self.subclass_dict = self.format_stats('subclass', subclass_stats)
+                # take subclass key from row
+                subclass_key = row['Class']
+                if subclass_key in self.class_keys:
+                    # get corresponding names from class_keys
+                    subclass_name = self.class_keys[subclass_key]['subclass']
+                    class_name = self.class_keys[subclass_key]['class']
+                    # populate new subclasses and classes
+                    if subclass_name not in subclass_stats:
+                        subclass_stats[subclass_name] = {}
+                        if class_name not in class_stats:
+                            class_stats[class_name] = {}
+                    # add row to group stats for the class and subclass that
+                    # correspond to the row
+                    subclass_stats[subclass_name] = self.group_stats(row,
+                            subclass_stats[subclass_name])
+                    class_stats[class_name] = self.group_stats(row,
+                            class_stats[class_name])
+            # write files
+            subclass_cols = self.stats_cols('subclass')
+            self.subclass_dict = self.format_stats('subclass', subclass_stats)
             sub_success = self.write_csv(self.subclass_path, subclass_cols, self.subclass_dict.values())
-            class_cols, self.class_dict = self.format_stats('class', class_stats)
+            class_cols = self.stats_cols('class')
+            self.class_dict = self.format_stats('class', class_stats)
             class_success = self.write_csv(self.class_path, class_cols, self.class_dict.values())
         return sub_success, class_success
 
-    def format_stats(self, cat, stats):
-        rows = {}
+    def stats_cols(self, cat):
         cols = [cat]
         grps = self.get_groups()
         for g in grps:
             cols.append(g + ' cnt')
             cols.append(g + ' avg')
             cols.append(g + ' std')
-        for cl, groups in stats.items():
+        return cols
+
+    def format_stats(self, cat, stats):
+        rows = {}
+        for name, groups in stats.items():
             row = {}
-            row[cat] = cl
-            for name, info in groups.items():
-                row[name + ' cnt'] = info['cnt']
-                row[name + ' avg'] = numpy.mean(info['grp_areas'])
-                row[name + ' std'] = numpy.std(info['grp_areas'])
-            rows[cl] = row
-        return cols, rows
+            # fill the class type with the name
+            row[cat] = name
+            # for each group add stats based on grp area lists
+            for group, info in groups.items():
+                row[group + ' cnt'] = info['cnt']
+                row[group + ' avg'] = numpy.mean(info['grp_areas'])
+                row[group + ' std'] = numpy.std(info['grp_areas'])
+            rows[name] = row
+        return rows
 
     def group_stats(self, row, grp_info):
         prefix = 'GroupArea'
@@ -387,6 +421,7 @@ class LipidAnalysis:
             self.groups = self.get_groups()
         for key in self.groups.keys():
             if key not in grp_info:
+                # keep cnt and a list of group areas for group
                 grp_info[key] = {'cnt': 0, 'grp_areas': []}
             areas = self.list_col_type(row, self.area_start + key)
             if max(areas) > 0.0:
