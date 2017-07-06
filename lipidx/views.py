@@ -26,6 +26,7 @@ def lipid_analysis():
         file2_path = root_path + 'file2.txt'
 
         la = LipidAnalysis([file1_path, file2_path], debug)
+        la.remove_rejects()
         la.group_ions(form.data['group_ions_within'])
         la.filter_rows(form.data['retention_time_filter'],
                 form.data['group_pq_filter'],

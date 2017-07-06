@@ -239,6 +239,14 @@ class LipidAnalysis:
                     if j != keep:
                         del(self.rows[j])
 
+    def remove_rejects(self):
+        # rejects must be removed before grouping ions
+        selected = {}
+        for name, row in self.rows.items():
+            if row['Rej.'] == '0':
+                selected[name] = row
+        self.rows = selected
+
     def filter_rows(self, ret_time_fil, group_pq_fil, group_sn_fil, group_area_fil,
             group_height_fil):
         selected = {}
@@ -251,8 +259,6 @@ class LipidAnalysis:
 
     def filter_in(self, row, ret_time_fil, group_pq_fil, group_sn_fil,
             group_area_fil, group_height_fil):
-        if row['Rej.'] != '0':
-            return False
         if float(row['ret_time']) <= ret_time_fil:
             return False
         group_pq_max = max(self.list_col_type(row, 'GroupPQ'))
