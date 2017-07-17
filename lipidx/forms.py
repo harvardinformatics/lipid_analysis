@@ -1,4 +1,4 @@
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from wtforms import (IntegerField, FloatField, StringField,
     TextAreaField, RadioField, BooleanField)
 from wtforms.validators import Optional
@@ -15,7 +15,7 @@ class ElseOptional(Optional):
         if getattr(form, self.attr).data != self.val:
             super(ElseOptional, self).__call__(form, field)
 
-class LipidAnalysisForm(Form):
+class LipidAnalysisForm(FlaskForm):
     ION_GROUP_WITHIN_DEFAULT = 0.9
     RET_TIME_DEFAULT = 3
     GROUP_PQ_DEFAULT = 0.8

@@ -4,7 +4,6 @@ import numpy
 import zipfile
 import re
 from flask import request
-from flask.ext import excel
 from flask import current_app as app
 from collections import OrderedDict
 import logging

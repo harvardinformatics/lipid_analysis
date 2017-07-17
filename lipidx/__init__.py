@@ -1,5 +1,5 @@
 from flask import Flask
-from flask.ext.bootstrap import Bootstrap
+from flask_bootstrap import Bootstrap
 from lipidx.config import Config
 import logging
 import sys, os
