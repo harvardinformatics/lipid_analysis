@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{%- block styles %}
+    {{ super() }}
+    <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bokeh-0.12.6.min.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content_title %}
+    <h1>Scatter Test</h1>
+{%- endblock content_title %}
+{% block page_content %}
+    {{div|safe}}
+{% endblock page_content %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    {{script|safe}}
+{% endblock %}

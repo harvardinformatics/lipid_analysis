@@ -5,10 +5,31 @@ from lipidx.forms import LipidAnalysisForm
 from lipidx import app
 import logging
 import sys, os
+#import plotly
+#from plotly.graph.objs import Scatter, Layout
+from bokeh.plotting import figure, output_file, show
+from bokeh.models import HoverTool
+from bokeh.embed import components
 
 @app.route('/')
 def hello():
-    return 'hello'
+    x = [1,2,3,4,5]
+    y = [6,7,2,4,5]
+    output_file('test.html')
+    TOOLS = "hover"
+    p = figure(title='test', tools=TOOLS, x_axis_label = 'x', y_axis_label = 'y')
+    p.circle(x, y, size=10, color="red", legend='Temp.', alpha=0.5)
+    hover = p.select_one(HoverTool)
+    hover.point_policy = "follow_mouse"
+    hover.tooltips = [
+            ("Name", "test")
+    ]
+    script, div = components(p)
+    '''plotly.offline.plot({
+        'data': [Scatter(x=[1,2,3,4], y=[4,3,2,1])],
+        'layout': Layout(title='test')
+    })'''
+    return render_template('scatter.html', script = script, div = div)
 
 @app.route('/lipid_analysis/', methods=['GET', 'POST'])
 def lipid_analysis():
