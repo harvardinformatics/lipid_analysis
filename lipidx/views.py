@@ -36,7 +36,12 @@ def lipid_analysis():
     form_data = request.form
     form = LipidAnalysisForm()
     zip_path = None
+    script = None
+    div = None
     debug = 'debug' in request.args
+    context = {'params': {}}
+    if debug:
+        context['params'] = {'debug': True}
     if form.validate_on_submit():
         root_path = app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
@@ -59,11 +64,9 @@ def lipid_analysis():
         la.remove_columns(form.data['remove_cols'])
         la.normalize(form.data)
         subclass_stats, class_stats = la.calc_class_stats(form.data['class_stats'])
+        context['class_script'], context['class_div'] = la.class_plot()
+        context['volcano_script'], context['volcano_div'] = la.volcano_plot()
         zip_path = la.write_results()
-
-    context = {'params': {}}
-    if debug:
-        context['params'] = {'debug': True}
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
 @app.route('/file/<filename>')

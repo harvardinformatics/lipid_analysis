@@ -3,6 +3,7 @@
 {%- block styles %}
     {{ super() }}
     <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bokeh-0.12.6.min.css') }}" rel="stylesheet">
 {% endblock %}
 {% block content_title %}
     <h1>Lipid Analysis</h1>
@@ -60,10 +61,23 @@
     {% if zip_path %}
         <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
             target="_blank">Download Lipid Analysis File</a>
+        {% endif %}
+    {% if class_div %}
+        {{class_div|safe}}
+    {% endif %}
+    {% if volcano_div %}
+        {{volcano_div|safe}}
     {% endif %}
 {% endblock page_content %}
 
 {% block scripts %}
     {{ super() }}
     <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    {% if class_script %}
+        {{class_script|safe}}
+    {% endif %}
+    {% if volcano_script %}
+        {{volcano_script|safe}}
+    {% endif %}
 {% endblock %}

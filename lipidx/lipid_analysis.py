@@ -1,12 +1,19 @@
 import csv
 import os
 import numpy
+from scipy.stats import ttest_ind
 import zipfile
 import re
 from flask import request
 from flask import current_app as app
 from collections import OrderedDict
 import logging
+from bkcharts import Bar
+from bokeh.layouts import gridplot
+from bokeh.plotting import figure, output_file, show, ColumnDataSource
+from bokeh.models import HoverTool
+from bokeh.embed import components
+from bokeh.sampledata.autompg import autompg as df
 
 class LipidAnalysis:
 
@@ -18,11 +25,14 @@ class LipidAnalysis:
         # debug adds cols to results to show pre normalized values
         self.debug = debug
         self.area_start = 'Area['
+        self.group_area_start = 'GroupArea['
         self.groups = {}
         # cols should be the same in all files
         # col names will be taken from first file
         self.rows = self.get_rows_from_files(self.paths)
         # filled in calc_class_stats
+        self.class_stats = {}
+        self.subclass_stats = {}
         self.class_dict = {}
         self.subclass_dict = {}
 
@@ -390,10 +400,10 @@ class LipidAnalysis:
                             class_stats[class_name])
             # write files
             subclass_cols = self.stats_cols('subclass')
-            self.subclass_dict = self.format_stats('subclass', subclass_stats)
+            self.subclass_stats, self.subclass_dict = self.format_stats('subclass', subclass_stats)
             sub_success = self.write_csv(self.subclass_path, subclass_cols, self.subclass_dict.values())
             class_cols = self.stats_cols('class')
-            self.class_dict = self.format_stats('class', class_stats)
+            self.class_stats, self.class_dict = self.format_stats('class', class_stats)
             class_success = self.write_csv(self.class_path, class_cols, self.class_dict.values())
         return sub_success, class_success
 
@@ -415,10 +425,16 @@ class LipidAnalysis:
             # for each group add stats based on grp area lists
             for group, info in groups.items():
                 row[group + ' cnt'] = info['cnt']
-                row[group + ' avg'] = numpy.mean(info['grp_areas'])
-                row[group + ' std'] = numpy.std(info['grp_areas'])
+                avg = numpy.mean(info['grp_areas'])
+                gr_sum = numpy.sum(info['grp_areas'])
+                row[group + ' avg'] = avg
+                stats[name][group]['sum'] = gr_sum
+                stats[name][group]['avg'] = avg
+                std = numpy.std(info['grp_areas'])
+                row[group + ' std'] = std
+                stats[name][group]['std'] = std
             rows[name] = row
-        return rows
+        return stats, rows
 
     def group_stats(self, row, grp_info):
         prefix = 'GroupArea'
@@ -447,3 +463,63 @@ class LipidAnalysis:
                     row_dict = dict(zip(cols, row))
                     classes[row_dict['key']] = row_dict
         return classes
+
+    def class_plot(self):
+        data = {
+                'lipid': [],
+                'group': [],
+                'nb': [],
+                'avg': [],
+                'sum': [],
+                'std': []
+        }
+        for lipid, groups in self.class_stats.items():
+            for group, stats in groups.items():
+                data['lipid'].append(lipid)
+                data['group'].append(group)
+                data['nb'].append(stats['cnt'])
+                data['avg'].append(stats['avg'])
+                data['sum'].append(stats['sum'])
+                data['std'].append(stats['std'])
+        bar_cnt = Bar(data, title = 'nb of lipids', ylabel = 'nb of lipids', values = 'nb', label ='lipid', group = 'group')
+        bar_avg = Bar(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid', group = 'group')
+        bars = gridplot(
+                [bar_cnt, None],
+                [bar_avg, None]
+        )
+        script, div = components(bars)
+        return script, div
+
+    def calc_ratio(self):
+        for key, row in self.rows.items():
+            ratio = float(row['GroupArea[s2]'])/float(row['GroupArea[s1]'])
+            log_ratio = numpy.log2(ratio)
+            self.rows[key]['ratio'] = ratio
+            self.rows[key]['log_ratio'] = log_ratio
+            s2 = self.list_col_type(row, self.area_start + 's2')
+            s1 = self.list_col_type(row, self.area_start + 's1')
+            t, p = ttest_ind(s2, s1)
+            self.rows[key]['p_value'] = p
+
+    def volcano_plot(self):
+        self.calc_ratio()
+        data = {
+                'lipid': [],
+                'log2': [],
+                'p': []
+        }
+        for key, row in self.rows.items():
+            data['lipid'].append(('Name', key))
+            data['log2'].append(row['log_ratio'])
+            data['p'].append(row['p_value'])
+        source = ColumnDataSource(data = data)
+        hover = HoverTool(tooltips=[
+            ('name', "@lipid")
+        ])
+        p = figure(title='test', tools=[hover], x_axis_label = 'log2(ratio)', y_axis_label = 'p value')
+        p.circle('log2', 'p', size=10, color="red", legend='Temp.', alpha=0.5,
+                source = source)
+        #hover = p.select_one(HoverTool)
+        #hover.point_policy = "follow_mouse"
+        script, div = components(p)
+        return script, div
