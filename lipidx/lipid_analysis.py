@@ -8,10 +8,11 @@ from flask import request
 from flask import current_app as app
 from collections import OrderedDict
 import logging
-from bkcharts import Bar
+from bokeh.charts import Bar, BoxPlot
 from bokeh.layouts import gridplot
-from bokeh.plotting import figure, output_file, show, ColumnDataSource
-from bokeh.models import HoverTool
+from bokeh.plotting import figure, output_file, show
+#from bokeh.plotting import figure, output_file, show, ColumnDataSource
+from bokeh.models import HoverTool, ColumnDataSource, Whisker
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 
@@ -477,8 +478,16 @@ class LipidAnalysis:
                 'nb': [],
                 'avg': [],
                 'sum': [],
-                'std': []
+                'std': [],
+                'space': [],
+                'space2': [],
+                'lower': [],
+                'upper': []
         }
+        space = 1
+        space2_const = ((len(self.class_stats) -2) * 2 +2) /(len(self.class_stats) * 5)
+        space2 = space2_const
+        print(space2)
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
                 data['lipid'].append(lipid)
@@ -487,11 +496,53 @@ class LipidAnalysis:
                 data['avg'].append(stats['avg'])
                 data['sum'].append(stats['sum'])
                 data['std'].append(stats['std'])
+                data['lower'].append(stats['sum'] - stats['std'])
+                data['upper'].append(stats['sum'] + stats['std'])
+                data['space'].append(space)
+                data['space2'].append(space2)
+                space += 1
+                space2 += space2_const
+
         bar_cnt = Bar(data, title = 'nb of lipids', ylabel = 'nb of lipids', values = 'nb', label ='lipid', group = 'group')
-        bar_avg = Bar(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid', group = 'group')
+        bar_sum = Bar(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid', group = 'group')
+
+        bar_errors = ColumnDataSource(data=dict(base=data['space2'], lower=data['lower'], upper=data['upper']))
+        bar_sum.add_layout(Whisker(source=bar_errors, base='base', upper='upper',
+            lower='lower'))
+        '''hover = HoverTool(tooltips=[
+            ('name', "@lipid")
+        ])'''
+        print(data)
+        #bar_sum = figure(title='test', tools=[hover], y_axis_label = 'sum of area per group')
+        bar_test = figure(title='test', y_axis_label = 'sum of area per group')
+        bar_test.vbar(x = 'space', width = 0.5, top = 'sum', legend
+                = 'lipid', source=data)
+        #bar_sum = BoxPlot(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid')
+        base = data['space']
+        upper = data['upper']
+        lower = data['lower']
+        errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
+        bar_test.add_layout(Whisker(source=errors, base='base', upper='upper',
+            lower='lower'))
+        '''x = [1,2,3,4,5]
+        y = [6,7,2,4,5]
+        p = figure(title='test', x_axis_label = 'x', y_axis_label = 'y')
+        p.circle(x, y, size=10, color="red", legend='Temp.', alpha=0.5)
+        base = x
+        upper = [7,7.1,3,4.5,5.5]
+        lower = [2,2,2,2,2]
+        errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
+        p.add_layout(Whisker(source=errors, base='base', upper='upper',
+        lower='lower'))
+
+        bar_test = figure(title='test')
+        bar_test.vbar(x = x, width = 0.5, top = y)
+        bar_test.add_layout(Whisker(source = errors, base = 'base',
+        upper = 'upper', lower = 'lower'))'''
+
         bars = gridplot(
-                [bar_cnt, None],
-                [bar_avg, None]
+                [bar_test, None],
+                [bar_sum, None]
         )
         script, div = components(bars)
         return script, div

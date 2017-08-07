@@ -8,7 +8,7 @@ import sys, os
 #import plotly
 #from plotly.graph.objs import Scatter, Layout
 from bokeh.plotting import figure, output_file, show
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, Whisker, ColumnDataSource, Span, Range1d
 from bokeh.embed import components
 
 @app.route('/')
@@ -19,6 +19,16 @@ def hello():
     TOOLS = "hover"
     p = figure(title='test', tools=TOOLS, x_axis_label = 'x', y_axis_label = 'y')
     p.circle(x, y, size=10, color="red", legend='Temp.', alpha=0.5)
+    p.y_range = Range1d(max(y), min(y))
+    p.legend.click_policy = 'hide'
+    base = x
+    upper = [7,7.1,3,4.5,5.5]
+    lower = [2,2,2,2,2]
+    errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
+    p.add_layout(Whisker(source=errors, base='base', upper='upper',
+    lower='lower'))
+    p.add_layout(Span(location=1.5, dimension='height', line_color='green',
+        line_dash='dashed'))
     hover = p.select_one(HoverTool)
     hover.point_policy = "follow_mouse"
     hover.tooltips = [
