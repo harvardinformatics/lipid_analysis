@@ -19,6 +19,7 @@ class LipidAnalysis:
 
     ROUND_TO = 2
     POST_NORMAL_ROUND = 8
+    NEGATIVE_IONS_WITH_PLUS = ['HCOO', 'CH3COO', 'CL']
 
     def __init__ (self, paths, debug = False):
         self.paths = paths
@@ -200,8 +201,13 @@ class LipidAnalysis:
         # group rows by lipid charge and ret time
         for name, row in self.rows.items():
             # capture lipid_charge
-            grps = re.search('(.*[+,-]).*', name)
+            grps = re.search('(.*[+,-])(.*)_.*', name)
             lipid_charge = grps.group(1)
+            adduct = grps.group(2)
+            # some negative ions actually start with a +, change those to - for
+            # the purpose of grouping
+            if adduct in self.NEGATIVE_IONS_WITH_PLUS:
+                lipid_charge = lipid_charge.replace(')+', ')-')
             ret_time = row['ret_time']
             if lipid_charge not in lc_grps:
                 # for ret_time store a list of lipid rows that are within 0.9
