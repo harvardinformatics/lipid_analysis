@@ -15,4 +15,4 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'li
 
 logging.basicConfig(filename=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lipid_analysis.log'), level=logging.DEBUG)
 
-from lipid_app import app as application
+from lipidx import app as application
