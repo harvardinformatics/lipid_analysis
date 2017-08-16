@@ -1,6 +1,7 @@
 import csv
 import os
 import numpy
+from math import pi
 from scipy.stats import ttest_ind
 import zipfile
 import re
@@ -15,9 +16,10 @@ from bokeh.plotting import figure, output_file, show
 from bokeh.models import HoverTool, ColumnDataSource, Whisker
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
+from bokeh.palettes import d3
 
 class LipidAnalysis:
-
+    MAX_GROUPS = 10
     ROUND_TO = 2
     POST_NORMAL_ROUND = 8
     NEGATIVE_IONS_WITH_PLUS = ['HCOO', 'CH3COO', 'CL']
@@ -438,8 +440,10 @@ class LipidAnalysis:
                 stats[name][group]['sum'] = gr_sum
                 stats[name][group]['avg'] = avg
                 std = numpy.std(info['grp_areas'])
+                log_std = numpy.std(info['log_grp_areas'])
                 row[group + ' std'] = std
                 stats[name][group]['std'] = std
+                stats[name][group]['log_std'] = log_std
             rows[name] = row
         return stats, rows
 
@@ -450,11 +454,18 @@ class LipidAnalysis:
         for key in self.groups.keys():
             if key not in grp_info:
                 # keep cnt and a list of group areas for group
-                grp_info[key] = {'cnt': 0, 'grp_areas': []}
+                grp_info[key] = {'cnt': 0, 'grp_areas': [], 'log_grp_areas': []}
             areas = self.list_col_type(row, self.area_start + key)
+            log_areas = []
+            for a in areas:
+                log = 0.0
+                if a > 0.0:
+                    log = numpy.log(a)
+                log_areas.append(log)
             if max(areas) > 0.0:
                 grp_info[key]['cnt'] += 1
             grp_info[key]['grp_areas'].append(numpy.mean(areas))
+            grp_info[key]['log_grp_areas'].append(numpy.mean(log_areas))
         return grp_info
 
     def load_lipid_classes(self):
@@ -475,77 +486,84 @@ class LipidAnalysis:
         data = {
                 'lipid': [],
                 'group': [],
-                'nb': [],
+                'cnt': [],
                 'avg': [],
                 'sum': [],
+                'log_sum': [],
                 'std': [],
-                'space': [],
-                'space2': [],
+                'log_std': [],
+                'x': [],
                 'lower': [],
                 'upper': []
         }
-        space = 1
-        space2_const = ((len(self.class_stats) -2) * 2 +2) /(len(self.class_stats) * 5)
-        space2 = space2_const
-        print(space2)
+        x = 1
+        gr_data = {}
+        group_list = []
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
+                if group not in group_list:
+                    group_list.append(group)
+
+                if group not in gr_data:
+                    gr_data[group] = {
+                            'cnt': [],
+                            'sum': [],
+                            'log_sum': [],
+                            'x': []
+                    }
+                gr_data[group]['cnt'].append(stats['cnt'])
+                gr_data[group]['sum'].append(stats['sum'])
+                if stats['sum'] > 0:
+                    log = numpy.log(stats['sum'])
+                else:
+                    log = 0.0
+                gr_data[group]['log_sum'].append(log)
+                gr_data[group]['x'].append(x)
                 data['lipid'].append(lipid)
                 data['group'].append(group)
-                data['nb'].append(stats['cnt'])
+                data['cnt'].append(stats['cnt'])
                 data['avg'].append(stats['avg'])
                 data['sum'].append(stats['sum'])
+                data['log_sum'].append(log)
                 data['std'].append(stats['std'])
+                data['log_std'].append(stats['log_std'])
                 data['lower'].append(stats['sum'] - stats['std'])
                 data['upper'].append(stats['sum'] + stats['std'])
-                data['space'].append(space)
-                data['space2'].append(space2)
-                space += 1
-                space2 += space2_const
+                data['x'].append(x)
+                x += 1
 
-        bar_cnt = Bar(data, title = 'nb of lipids', ylabel = 'nb of lipids', values = 'nb', label ='lipid', group = 'group')
-        bar_sum = Bar(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid', group = 'group')
-
-        bar_errors = ColumnDataSource(data=dict(base=data['space2'], lower=data['lower'], upper=data['upper']))
-        bar_sum.add_layout(Whisker(source=bar_errors, base='base', upper='upper',
-            lower='lower'))
-        '''hover = HoverTool(tooltips=[
-            ('name', "@lipid")
-        ])'''
-        print(data)
-        #bar_sum = figure(title='test', tools=[hover], y_axis_label = 'sum of area per group')
-        bar_test = figure(title='test', y_axis_label = 'sum of area per group')
-        bar_test.vbar(x = 'space', width = 0.5, top = 'sum', legend
-                = 'lipid', source=data)
-        #bar_sum = BoxPlot(data, title = 'intensity', ylabel = 'sum of area per group', values = 'sum', label ='lipid')
-        base = data['space']
-        upper = data['upper']
-        lower = data['lower']
-        errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
-        bar_test.add_layout(Whisker(source=errors, base='base', upper='upper',
-            lower='lower'))
-        '''x = [1,2,3,4,5]
-        y = [6,7,2,4,5]
-        p = figure(title='test', x_axis_label = 'x', y_axis_label = 'y')
-        p.circle(x, y, size=10, color="red", legend='Temp.', alpha=0.5)
-        base = x
-        upper = [7,7.1,3,4.5,5.5]
-        lower = [2,2,2,2,2]
-        errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
-        p.add_layout(Whisker(source=errors, base='base', upper='upper',
-        lower='lower'))
-
-        bar_test = figure(title='test')
-        bar_test.vbar(x = x, width = 0.5, top = y)
-        bar_test.add_layout(Whisker(source = errors, base = 'base',
-        upper = 'upper', lower = 'lower'))'''
+        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'])
+        bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
+        'sum of area per group', data['lipid'], 'std')
+        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Intensity, log', 'sum of area per group', data['lipid'], 'log_std')
 
         bars = gridplot(
-                [bar_test, None],
-                [bar_sum, None]
+                [bar_cnt],
+                [bar_sum],
+                [bar_log_sum]
         )
         script, div = components(bars)
         return script, div
+
+    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, std = None):
+        bar = figure(title=title, y_axis_label = y_label,
+                x_range = x_range, width = 1500)
+        bar.xaxis.major_label_orientation = pi/4
+        if std:
+            base = data[x]
+            upper = [u + data[std][i] for i, u in enumerate(data[y])]
+            lower = [u - data[std][i] for i, u in enumerate(data[y])]
+            errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
+            bar.add_layout(Whisker(source=errors, base='base', upper='upper',
+                lower='lower', level='annotation'))
+        palette_key = 0 # why does this start at 3?!
+        for group, d in gr_data.items():
+            bar.vbar(x = d[x], width = 0.5, top = d[y], legend
+                    = group, color = d3['Category10'][self.MAX_GROUPS][palette_key])
+            palette_key += 1
+        bar.legend.click_policy = 'hide'
+        bar.output_backend = 'svg'
+        return bar
 
     def calc_ratio(self):
         for key, row in self.rows.items():

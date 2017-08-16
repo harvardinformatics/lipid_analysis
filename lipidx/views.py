@@ -75,7 +75,7 @@ def lipid_analysis():
         la.normalize(form.data)
         subclass_stats, class_stats = la.calc_class_stats(form.data['class_stats'])
         context['class_script'], context['class_div'] = la.class_plot()
-        context['volcano_script'], context['volcano_div'] = la.volcano_plot()
+        #context['volcano_script'], context['volcano_div'] = la.volcano_plot()
         zip_path = la.write_results()
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
