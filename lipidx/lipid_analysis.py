@@ -588,10 +588,13 @@ class LipidAnalysis:
     def get_plots(self, form_data):
         plots = []
         prefix = 'group'
+        if not self.groups:
+            self.groups = self.get_groups()
         for g in range(1, self.MAX_VOLCANO_PLOTS):
             group1 = prefix + str(g)
             group2 = prefix + str(g + 1)
-            if form_data[group1] and form_data[group2]:
+            if (form_data[group1] and form_data[group2] and form_data[group1] in
+            self.groups and form_data[group2] in self.groups):
                 plots.append((form_data[group1], form_data[group2]))
         return plots
 
@@ -622,7 +625,7 @@ class LipidAnalysis:
                     data[class_name]['lipid'].append(('Name', key))
                     data[class_name]['log2'].append(row['log_ratio'])
                     data[class_name]['p'].append(row['p_value'])
-            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = 'p value', width = 1500, height = 1500, toolbar_location = "above")
+            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = 'p value', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
             ])
