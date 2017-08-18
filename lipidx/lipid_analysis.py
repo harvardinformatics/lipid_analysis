@@ -607,7 +607,11 @@ class LipidAnalysis:
             data = {}
             for key, row in self.rows.items():
                 subclass_key = row['Class']
-                if subclass_key in self.class_keys:
+                # prevent empty or Inf values which break json encode in bokeh
+                if (subclass_key in self.class_keys and row['log_ratio'] and
+                row['p_value'] and key and row['log_ratio'] != float("inf")
+                and row['p_value'] != float("inf") and row['log_ratio'] != float("-inf")
+                and row['p_value'] != float("-inf")):
                     class_name = self.class_keys[subclass_key]['class']
                     if class_name not in data:
                         data[class_name] = {
