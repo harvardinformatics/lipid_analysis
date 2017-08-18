@@ -58,6 +58,12 @@ class LipidAnalysisForm(FlaskForm):
     normal_s9 = StringField('s9')
     normal_s10 = StringField('s10')
     class_stats = BooleanField('Class stats', default = True)
+    group1 = StringField('group1')
+    group2 = StringField('group2')
+    group3 = StringField('group3')
+    group4 = StringField('group4')
+    group5 = StringField('group5')
+    group6 = StringField('group6')
 
 
 

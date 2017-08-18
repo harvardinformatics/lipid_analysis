@@ -20,9 +20,11 @@ from bokeh.palettes import d3
 
 class LipidAnalysis:
     MAX_GROUPS = 10
+    MAX_CLASSES = 20
     ROUND_TO = 2
     POST_NORMAL_ROUND = 8
     NEGATIVE_IONS_WITH_PLUS = ['HCOO', 'CH3COO', 'CL']
+    MAX_VOLCANO_PLOTS = 3
 
     def __init__ (self, paths, debug = False):
         self.paths = paths
@@ -392,6 +394,7 @@ class LipidAnalysis:
             for name, row in self.rows.items():
                 # take subclass key from row
                 subclass_key = row['Class']
+                # TODO: get new lipid key that contains everything
                 if subclass_key in self.class_keys:
                     # get corresponding names from class_keys
                     subclass_name = self.class_keys[subclass_key]['subclass']
@@ -568,9 +571,12 @@ class LipidAnalysis:
         bar.output_backend = 'svg'
         return bar
 
-    def calc_ratio(self):
+    def calc_ratio(self, group1, group2):
         for key, row in self.rows.items():
-            ratio = float(row['GroupArea[s2]'])/float(row['GroupArea[s1]'])
+            div = float(row['GroupArea[' + group2 + ']'])
+            if div <= 0.0:
+                div = 0.0000000001
+            ratio = float(row['GroupArea[' + group1 + ']'])/div
             log_ratio = numpy.log2(ratio)
             self.rows[key]['ratio'] = ratio
             self.rows[key]['log_ratio'] = log_ratio
@@ -579,25 +585,52 @@ class LipidAnalysis:
             t, p = ttest_ind(s2, s1)
             self.rows[key]['p_value'] = p
 
-    def volcano_plot(self):
-        self.calc_ratio()
-        data = {
-                'lipid': [],
-                'log2': [],
-                'p': []
-        }
-        for key, row in self.rows.items():
-            data['lipid'].append(('Name', key))
-            data['log2'].append(row['log_ratio'])
-            data['p'].append(row['p_value'])
-        source = ColumnDataSource(data = data)
-        hover = HoverTool(tooltips=[
-            ('name', "@lipid")
-        ])
-        p = figure(title='test', tools=[hover], x_axis_label = 'log2(ratio)', y_axis_label = 'p value')
-        p.circle('log2', 'p', size=10, color="red", legend='Temp.', alpha=0.5,
-                source = source)
-        #hover = p.select_one(HoverTool)
-        #hover.point_policy = "follow_mouse"
-        script, div = components(p)
+    def get_plots(self, form_data):
+        plots = []
+        prefix = 'group'
+        for g in range(1, self.MAX_VOLCANO_PLOTS):
+            group1 = prefix + str(g)
+            group2 = prefix + str(g + 1)
+            if form_data[group1] and form_data[group2]:
+                plots.append((form_data[group1], form_data[group2]))
+        return plots
+
+    def volcano_plot(self, form_data):
+        plots = self.get_plots(form_data)
+        plot_list = []
+        script = None
+        div = None
+        if plots and not self.class_keys:
+            self.class_keys = self.load_lipid_classes()
+        for (group1, group2) in plots:
+            self.calc_ratio(group1, group2)
+            data = {}
+            for key, row in self.rows.items():
+                subclass_key = row['Class']
+                if subclass_key in self.class_keys:
+                    class_name = self.class_keys[subclass_key]['class']
+                    if class_name not in data:
+                        data[class_name] = {
+                                'lipid': [],
+                                'log2': [],
+                                'p': []
+                        }
+                    data[class_name]['lipid'].append(('Name', key))
+                    data[class_name]['log2'].append(row['log_ratio'])
+                    data[class_name]['p'].append(row['p_value'])
+            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = 'p value', width = 1500, height = 1500, toolbar_location = "above")
+            hover = HoverTool(tooltips=[
+                ('name', "@lipid")
+            ])
+            p.add_tools(hover)
+            palette_key = 0
+            for class_name, source in data.items():
+                p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
+                        source = source)
+                palette_key += 1
+            p.legend.click_policy = 'hide'
+            p.output_backend = 'svg'
+            plot_list.append([p])
+        if plot_list:
+           script, div = components(gridplot(plot_list))
         return script, div
