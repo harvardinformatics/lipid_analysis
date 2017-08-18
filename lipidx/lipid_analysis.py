@@ -531,6 +531,9 @@ class LipidAnalysis:
                 data['upper'].append(stats['sum'] + stats['std'])
                 data['x'].append(x)
                 x += 1
+            # put space between lipid groups
+            data['lipid'].append(lipid)
+            x += 1
 
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
