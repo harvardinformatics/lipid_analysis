@@ -11,12 +11,12 @@ from collections import OrderedDict
 import logging
 from bokeh.charts import Bar, BoxPlot
 from bokeh.layouts import gridplot
-from bokeh.plotting import figure, output_file, show
-#from bokeh.plotting import figure, output_file, show, ColumnDataSource
-from bokeh.models import HoverTool, ColumnDataSource, Whisker
+from bokeh.plotting import figure, show
+from bokeh.models import HoverTool, ColumnDataSource, Whisker, Range1d
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
+from bokeh.io import export_svgs, export_png
 
 class LipidAnalysis:
     MAX_GROUPS = 10
@@ -52,6 +52,10 @@ class LipidAnalysis:
         self.subclass_path = self.root_path + self.subclass_file
         self.class_file = 'class_stats.csv'
         self.class_path = self.root_path + self.class_file
+        self.volcano_svg = 'volcano.svg'
+        self.volcano_svg_path = self.root_path + self.volcano_svg
+        self.volcano_png = 'volcano.png'
+        self.volcano_png_path = self.root_path + self.volcano_png
         zip_file = 'lipid_results.zip'
         self.zip_path = self.root_path + zip_file
 
@@ -124,6 +128,10 @@ class LipidAnalysis:
             z.write(self.class_path, self.class_file)
         if os.path.exists(self.subclass_path):
             z.write(self.subclass_path, self.subclass_file)
+        if os.path.exists(self.volcano_svg_path):
+            z.write(self.volcano_svg_path, self.volcano_svg)
+        if os.path.exists(self.volcano_png_path):
+            z.write(self.volcano_png_path, self.volcano_png)
         z.close
         return self.zip_path
 
@@ -573,10 +581,14 @@ class LipidAnalysis:
 
     def calc_ratio(self, group1, group2):
         for key, row in self.rows.items():
-            div = float(row['GroupArea[' + group2 + ']'])
-            if div <= 0.0:
-                div = 0.0000000001
-            ratio = float(row['GroupArea[' + group1 + ']'])/div
+            dividend = float(row['GroupArea[' + group1 + ']'])
+            divisor = float(row['GroupArea[' + group2 + ']'])
+            if dividend == 0.0:
+                ratio = float(0.1)
+            elif divisor == 0.0:
+                ratio = float(10.0)
+            else:
+                ratio = dividend/divisor
             log_ratio = numpy.log2(ratio)
             self.rows[key]['ratio'] = ratio
             self.rows[key]['log_ratio'] = log_ratio
@@ -605,6 +617,7 @@ class LipidAnalysis:
         div = None
         if plots and not self.class_keys:
             self.class_keys = self.load_lipid_classes()
+        y_range = []
         for (group1, group2) in plots:
             self.calc_ratio(group1, group2)
             data = {}
@@ -624,7 +637,9 @@ class LipidAnalysis:
                         }
                     data[class_name]['lipid'].append(('Name', key))
                     data[class_name]['log2'].append(row['log_ratio'])
-                    data[class_name]['p'].append(row['p_value'])
+                    log_p = numpy.log(row['p_value'])
+                    data[class_name]['p'].append(log_p)
+                y_range.append(log_p)
             p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = 'p value', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
@@ -635,8 +650,11 @@ class LipidAnalysis:
                 p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
                         source = source)
                 palette_key += 1
+            p.y_range = Range1d(max(y_range), min(y_range))
             p.legend.click_policy = 'hide'
             p.output_backend = 'svg'
+            export_svgs(p, filename=self.volcano_svg_path)
+            export_png(p, filename=self.volcano_png_path)
             plot_list.append([p])
         if plot_list:
            script, div = components(gridplot(plot_list))
