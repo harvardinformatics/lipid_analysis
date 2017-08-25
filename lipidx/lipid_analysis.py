@@ -9,7 +9,6 @@ from flask import request
 from flask import current_app as app
 from collections import OrderedDict
 import logging
-from bokeh.charts import Bar, BoxPlot
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.models import HoverTool, ColumnDataSource, Whisker, Range1d
@@ -45,7 +44,7 @@ class LipidAnalysis:
         # file paths, eventualy these may not be hardcoded
         self.root_path = app.config['UPLOAD_FOLDER'] + '/'
         lipid_class_file = 'lipidKey.csv'
-        self.lipid_class_path = app.config['BASE_DIR'] + '/' + lipid_class_file
+        self.lipid_class_path = app.config['BASE_DIR'] + '/lipidx/' + lipid_class_file
         self.lipid_results_file = 'lipid_analysis.csv'
         self.lipid_results_path = self.root_path + self.lipid_results_file
         self.subclass_file = 'subclass_stats.csv'
