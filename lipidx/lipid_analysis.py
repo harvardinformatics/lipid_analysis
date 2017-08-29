@@ -504,7 +504,9 @@ class LipidAnalysis:
                 'log_std': [],
                 'x': [],
                 'lower': [],
-                'upper': []
+                'upper': [],
+                'relative': [],
+                'log_relative': []
         }
         x = 1
         gr_data = {}
@@ -545,23 +547,43 @@ class LipidAnalysis:
             data['lipid'].append(lipid)
             x += 1
 
-        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'])
+            # get relative sums
+            for group, stats in gr_data.items():
+                gr_sum = numpy.sum(gr_data[group]['sum'])
+                relative = gr_sum / numpy.sum(data['sum'])
+                gr_data[group]['relative'] = relative
+                data['relative'].append(relative)
+                log_relative = numpy.log(relative)
+                gr_data[group]['log_relative'] = log_relative
+                data['log_relative'].append(log_relative)
+        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
-        'sum of area per group', data['lipid'], 'std')
-        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Intensity, log', 'sum of area per group', data['lipid'], 'log_std')
+        'sum of area per group', data['lipid'], data['sum'], 'std')
+        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Intensity, log', 'sum of area per group', data['lipid'], data['log_sum'], 'log_std')
+        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative intensity', 'sum of area per group / total sum of area', data['lipid'], data['relative'])
+        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'log_relative', 'Relative intensity, log', 'sum of area per group / total sum of area', data['lipid'], data['log_relative'], None, True)
 
         bars = gridplot(
                 [bar_cnt],
                 [bar_sum],
-                [bar_log_sum]
+                [bar_log_sum],
+                [bar_relative],
+                [bar_log_relative]
         )
         script, div = components(bars)
         return script, div
 
-    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, std = None):
+    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = False):
+        if y_reverse:
+            top = min(y_range)
+        else:
+            top = max(y_range)
+        # set y_range starting from 0 with 10% space at top
+        range_d = Range1d(0, top + top * .1)
         bar = figure(title=title, y_axis_label = y_label,
-                x_range = x_range, width = 1500)
+                x_range = x_range, y_range = range_d, width = 1500)
         bar.xaxis.major_label_orientation = pi/4
+
         if std:
             base = data[x]
             upper = [u + data[std][i] for i, u in enumerate(data[y])]
