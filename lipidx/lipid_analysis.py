@@ -659,10 +659,10 @@ class LipidAnalysis:
                         }
                     data[class_name]['lipid'].append(('Name', key))
                     data[class_name]['log2'].append(row['log_ratio'])
-                    log_p = numpy.log(row['p_value'])
+                    log_p = numpy.log(row['p_value']) * -1
                     data[class_name]['p'].append(log_p)
                 y_range.append(log_p)
-            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = 'p value', width = 800, height = 800, toolbar_location = "above")
+            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
             ])
@@ -672,7 +672,6 @@ class LipidAnalysis:
                 p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
                         source = source)
                 palette_key += 1
-            p.y_range = Range1d(max(y_range), min(y_range))
             p.legend.click_policy = 'hide'
             p.output_backend = 'svg'
             export_svgs(p, filename=self.volcano_svg_path)
