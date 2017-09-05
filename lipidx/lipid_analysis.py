@@ -43,7 +43,7 @@ class LipidAnalysis:
         self.subclass_dict = {}
 
         # file paths, eventualy these may not be hardcoded
-        self.root_path = app.config['UPLOAD_FOLDER'] + '/'
+        self.root_path = app.config['UPLOAD_FOLDER']
         lipid_class_file = 'lipidKey.csv'
         self.lipid_class_path = app.config['BASE_DIR'] + '/' + lipid_class_file
         self.lipid_results_file = 'lipid_analysis.csv'

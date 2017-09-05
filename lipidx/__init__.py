@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap
-from lipidx.config import Config
+import config
 import logging
 import sys, os
 
@@ -31,8 +31,7 @@ logging.basicConfig(filename=os.path.join(os.path.dirname(os.path.dirname(os.pat
                                                             'lipid_analysis.log'), level=logging.DEBUG)
 app = Flask(__name__)
 app.wsgi_app = ReverseProxied(app.wsgi_app, script_name='/lipidx')
-conf = Config()
-app.config.from_object(conf)
+app.config.from_object(config)
 bootstrap = Bootstrap()
 bootstrap.init_app(app)
 
