@@ -516,13 +516,14 @@ class LipidAnalysis:
             for group, stats in groups.items():
                 if group not in group_list:
                     group_list.append(group)
-
                 if group not in gr_data:
                     gr_data[group] = {
                             'cnt': [],
                             'sum': [],
                             'log_sum': [],
-                            'x': []
+                            'x': [],
+                            'relative':[],
+                            'log_relative':[]
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
                 gr_data[group]['sum'].append(stats['sum'])
@@ -548,15 +549,20 @@ class LipidAnalysis:
             data['lipid'].append(lipid)
             x += 1
 
-            # get relative sums
-            for group, stats in gr_data.items():
+        # get relative sums
+        for lipid, groups in self.class_stats.items():
+            for group, stats in groups.items():
                 gr_sum = numpy.sum(gr_data[group]['sum'])
-                relative = gr_sum / numpy.sum(data['sum'])
-                gr_data[group]['relative'] = relative
-                data['relative'].append(relative)
-                log_relative = numpy.log(relative)
-                gr_data[group]['log_relative'] = log_relative
-                data['log_relative'].append(log_relative)
+                relative = stats['sum'] / gr_sum
+                relative_percent = relative * 100
+                # prevent empty or Inf values which break json encode in bokeh
+                if relative != float("inf") and relative != float("-inf"):
+                    gr_data[group]['relative'].append(relative_percent)
+                    data['relative'].append(relative_percent)
+                    log_relative = numpy.log(relative)
+                    if log_relative != float("inf") and log_relative != float("-inf"):
+                        gr_data[group]['log_relative'].append(log_relative)
+                        data['log_relative'].append(log_relative)
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
         'sum of area per group', data['lipid'], data['sum'], 'std')
