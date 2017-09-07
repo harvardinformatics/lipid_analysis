@@ -1,7 +1,7 @@
 import csv
 import os
 import numpy
-from math import pi
+from math import pi, isnan
 from scipy.stats import ttest_ind
 import zipfile
 import re
@@ -398,6 +398,7 @@ class LipidAnalysis:
         if opt_class_stats:
             self.class_keys = self.load_lipid_classes()
             class_stats = {}
+            class_list = []
             subclass_stats = {}
             for name, row in self.rows.items():
                 # take subclass key from row
@@ -412,12 +413,14 @@ class LipidAnalysis:
                         subclass_stats[subclass_name] = {}
                         if class_name not in class_stats:
                             class_stats[class_name] = {}
+                            class_list.append(class_name)
                     # add row to group stats for the class and subclass that
                     # correspond to the row
                     subclass_stats[subclass_name] = self.group_stats(row,
                             subclass_stats[subclass_name])
                     class_stats[class_name] = self.group_stats(row,
                             class_stats[class_name])
+
             # write files
             subclass_cols = self.stats_cols('subclass')
             self.subclass_stats, self.subclass_dict = self.format_stats('subclass', subclass_stats)
@@ -510,7 +513,7 @@ class LipidAnalysis:
                 'log_relative': []
         }
         x = 1
-        gr_data = {}
+        gr_data = OrderedDict()
         group_list = []
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
@@ -526,23 +529,20 @@ class LipidAnalysis:
                             'log_relative':[]
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
-                gr_data[group]['sum'].append(stats['sum'])
-                if stats['sum'] > 0:
-                    log = numpy.log(stats['sum'])
-                else:
-                    log = 0.0
+                gr_data[group]['sum'].append(self.check_inf(stats['sum']))
+                log = self.check_inf(numpy.log(stats['sum']))
                 gr_data[group]['log_sum'].append(log)
                 gr_data[group]['x'].append(x)
                 data['lipid'].append(lipid)
                 data['group'].append(group)
                 data['cnt'].append(stats['cnt'])
-                data['avg'].append(stats['avg'])
-                data['sum'].append(stats['sum'])
+                data['avg'].append(self.check_inf(stats['avg']))
+                data['sum'].append(self.check_inf(stats['sum']))
                 data['log_sum'].append(log)
-                data['std'].append(stats['std'])
-                data['log_std'].append(stats['log_std'])
-                data['lower'].append(stats['sum'] - stats['std'])
-                data['upper'].append(stats['sum'] + stats['std'])
+                data['std'].append(self.check_inf(stats['std']))
+                data['log_std'].append(self.check_inf(stats['log_std']))
+                data['lower'].append(self.check_inf(stats['sum'] - stats['std']))
+                data['upper'].append(self.check_inf(stats['sum'] + stats['std']))
                 data['x'].append(x)
                 x += 1
             # put space between lipid groups
@@ -553,16 +553,13 @@ class LipidAnalysis:
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
                 gr_sum = numpy.sum(gr_data[group]['sum'])
-                relative = stats['sum'] / gr_sum
-                relative_percent = relative * 100
-                # prevent empty or Inf values which break json encode in bokeh
-                if relative != float("inf") and relative != float("-inf"):
-                    gr_data[group]['relative'].append(relative_percent)
-                    data['relative'].append(relative_percent)
-                    log_relative = numpy.log(relative)
-                    if log_relative != float("inf") and log_relative != float("-inf"):
-                        gr_data[group]['log_relative'].append(log_relative)
-                        data['log_relative'].append(log_relative)
+                relative = self.check_inf(stats['sum'] / gr_sum)
+                relative_percent = self.check_inf(relative * 100)
+                gr_data[group]['relative'].append(relative_percent)
+                data['relative'].append(relative_percent)
+                log_relative = self.check_inf(numpy.log(relative))
+                gr_data[group]['log_relative'].append(log_relative)
+                data['log_relative'].append(log_relative)
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
         'sum of area per group', data['lipid'], data['sum'], 'std')
@@ -579,6 +576,11 @@ class LipidAnalysis:
         )
         script, div = components(bars)
         return script, div
+
+    def check_inf(self, n):
+        if n == float("inf") or n == float("-inf") or isnan(n):
+            n = 0.0
+        return n
 
     def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = False):
         if y_reverse:
@@ -598,7 +600,7 @@ class LipidAnalysis:
             errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
             bar.add_layout(Whisker(source=errors, base='base', upper='upper',
                 lower='lower', level='annotation'))
-        palette_key = 0 # why does this start at 3?!
+        palette_key = 0
         for group, d in gr_data.items():
             bar.vbar(x = d[x], width = 0.5, top = d[y], legend
                     = group, color = d3['Category10'][self.MAX_GROUPS][palette_key])
@@ -623,7 +625,7 @@ class LipidAnalysis:
             s2 = self.list_col_type(row, self.area_start + 's2')
             s1 = self.list_col_type(row, self.area_start + 's1')
             t, p = ttest_ind(s2, s1)
-            self.rows[key]['p_value'] = p
+            self.rows[key]['p_value'] = self.check_inf(p)
 
     def get_plots(self, form_data):
         plots = []
@@ -653,9 +655,7 @@ class LipidAnalysis:
                 subclass_key = row['Class']
                 # prevent empty or Inf values which break json encode in bokeh
                 if (subclass_key in self.class_keys and row['log_ratio'] and
-                row['p_value'] and key and row['log_ratio'] != float("inf")
-                and row['p_value'] != float("inf") and row['log_ratio'] != float("-inf")
-                and row['p_value'] != float("-inf")):
+                row['p_value'] and key):
                     class_name = self.class_keys[subclass_key]['class']
                     if class_name not in data:
                         data[class_name] = {
@@ -664,8 +664,8 @@ class LipidAnalysis:
                                 'p': []
                         }
                     data[class_name]['lipid'].append(('Name', key))
-                    data[class_name]['log2'].append(row['log_ratio'])
-                    log_p = numpy.log(row['p_value']) * -1
+                    data[class_name]['log2'].append(self.check_inf(row['log_ratio']))
+                    log_p = self.check_inf(numpy.log(row['p_value']) * -1)
                     data[class_name]['p'].append(log_p)
                 y_range.append(log_p)
             p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
