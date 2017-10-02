@@ -36,6 +36,8 @@ class LipidAnalysis:
         # cols should be the same in all files
         # col names will be taken from first file
         self.rows = self.get_rows_from_files(self.paths)
+        # several functions will need to know the group names
+        self.groups = self.get_groups()
         # filled in calc_class_stats
         self.class_stats = {}
         self.subclass_stats = {}
@@ -385,7 +387,6 @@ class LipidAnalysis:
         return sam[0]
 
     def recalc_cols(self):
-        self.groups = self.get_groups()
         for name, row in self.rows.items():
             stats = OrderedDict()
             # for each group recalc the avg and std from areas
@@ -402,18 +403,18 @@ class LipidAnalysis:
                 self.cols.append('GroupRSD[' + group + ']')
 
     def calc_class_stats(self, opt_class_stats):
+        # set to false if file not saved
         sub_success = True
         class_success = True
-        # if class stats are requested
+        # if class stats are requested then produce them and save them
+        # only save if requested because previous class stats have the same name
         if opt_class_stats:
             self.class_keys = self.load_lipid_classes()
             class_stats = {}
-            class_list = []
             subclass_stats = {}
             for name, row in self.rows.items():
                 # take subclass key from row
                 subclass_key = row['Class']
-                # TODO: get new lipid key that contains everything
                 if subclass_key in self.class_keys:
                     # get corresponding names from class_keys
                     subclass_name = self.class_keys[subclass_key]['subclass']
@@ -423,14 +424,12 @@ class LipidAnalysis:
                         subclass_stats[subclass_name] = {}
                         if class_name not in class_stats:
                             class_stats[class_name] = {}
-                            class_list.append(class_name)
                     # add row to group stats for the class and subclass that
                     # correspond to the row
                     subclass_stats[subclass_name] = self.group_stats(row,
                             subclass_stats[subclass_name])
                     class_stats[class_name] = self.group_stats(row,
                             class_stats[class_name])
-
             # write files
             subclass_cols = self.stats_cols('subclass')
             self.subclass_stats, self.subclass_dict = self.format_stats('subclass', subclass_stats)
@@ -442,8 +441,7 @@ class LipidAnalysis:
 
     def stats_cols(self, cat):
         cols = [cat]
-        grps = self.get_groups()
-        for g in grps:
+        for g in self.groups:
             cols.append(g + ' cnt')
             cols.append(g + ' avg')
             cols.append(g + ' std')
@@ -472,9 +470,7 @@ class LipidAnalysis:
         return stats, rows
 
     def group_stats(self, row, grp_info):
-        prefix = 'GroupArea'
-        if not self.groups:
-            self.groups = self.get_groups()
+        # add stats for each group from the row
         for key in self.groups.keys():
             if key not in grp_info:
                 # keep cnt and a list of group areas for group
@@ -482,12 +478,17 @@ class LipidAnalysis:
             areas = self.list_col_type(row, self.area_start + key)
             log_areas = []
             for a in areas:
+                # use 0.0 as the log if the area is 0.0 this will show there's
+                # nothing in the subclass/group
                 log = 0.0
                 if a > 0.0:
                     log = numpy.log(a)
                 log_areas.append(log)
             if max(areas) > 0.0:
                 grp_info[key]['cnt'] += 1
+            # append one area and log area per row group because there will be
+            # multiple rows in a subclass
+            # later another average is taken across all rows in the subclass
             grp_info[key]['grp_areas'].append(numpy.mean(areas))
             grp_info[key]['log_grp_areas'].append(numpy.mean(log_areas))
         return grp_info
@@ -643,8 +644,6 @@ class LipidAnalysis:
     def get_plots(self, form_data):
         plots = []
         prefix = 'group'
-        if not self.groups:
-            self.groups = self.get_groups()
         for g in range(1, self.MAX_VOLCANO_PLOTS):
             group1 = prefix + str(g)
             group2 = prefix + str(g + 1)
