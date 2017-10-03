@@ -33,11 +33,13 @@ class LipidAnalysis:
         self.area_start = 'Area['
         self.group_area_start = 'GroupArea['
         self.groups = {}
+
         # cols should be the same in all files
         # col names will be taken from first file
         self.rows = self.get_rows_from_files(self.paths)
         # several functions will need to know the group names
         self.groups = self.get_groups()
+
         # filled in calc_class_stats
         self.class_stats = {}
         self.subclass_stats = {}
@@ -402,41 +404,38 @@ class LipidAnalysis:
                 self.rows[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
                 self.cols.append('GroupRSD[' + group + ']')
 
-    def calc_class_stats(self, opt_class_stats):
+    def calc_class_stats(self):
         # set to false if file not saved
         sub_success = True
         class_success = True
-        # if class stats are requested then produce them and save them
-        # only save if requested because previous class stats have the same name
-        if opt_class_stats:
-            self.class_keys = self.load_lipid_classes()
-            class_stats = {}
-            subclass_stats = {}
-            for name, row in self.rows.items():
-                # take subclass key from row
-                subclass_key = row['Class']
-                if subclass_key in self.class_keys:
-                    # get corresponding names from class_keys
-                    subclass_name = self.class_keys[subclass_key]['subclass']
-                    class_name = self.class_keys[subclass_key]['class']
-                    # populate new subclasses and classes
-                    if subclass_name not in subclass_stats:
-                        subclass_stats[subclass_name] = {}
-                        if class_name not in class_stats:
-                            class_stats[class_name] = {}
-                    # add row to group stats for the class and subclass that
-                    # correspond to the row
-                    subclass_stats[subclass_name] = self.group_stats(row,
-                            subclass_stats[subclass_name])
-                    class_stats[class_name] = self.group_stats(row,
-                            class_stats[class_name])
-            # write files
-            subclass_cols = self.stats_cols('subclass')
-            self.subclass_stats, self.subclass_dict = self.format_stats('subclass', subclass_stats)
-            sub_success = self.write_csv(self.subclass_path, subclass_cols, self.subclass_dict.values())
-            class_cols = self.stats_cols('class')
-            self.class_stats, self.class_dict = self.format_stats('class', class_stats)
-            class_success = self.write_csv(self.class_path, class_cols, self.class_dict.values())
+        self.class_keys = self.load_lipid_classes()
+        class_stats = {}
+        subclass_stats = {}
+        for name, row in self.rows.items():
+            # take subclass key from row
+            subclass_key = row['Class']
+            if subclass_key in self.class_keys:
+                # get corresponding names from class_keys
+                subclass_name = self.class_keys[subclass_key]['subclass']
+                class_name = self.class_keys[subclass_key]['class']
+                # populate new subclasses and classes
+                if subclass_name not in subclass_stats:
+                    subclass_stats[subclass_name] = {}
+                    if class_name not in class_stats:
+                        class_stats[class_name] = {}
+                # add row to group areas for the class and subclass that
+                # correspond to the row
+                subclass_stats[subclass_name] = self.group_areas(row,
+                        subclass_stats[subclass_name])
+                class_stats[class_name] = self.group_areas(row,
+                        class_stats[class_name])
+        # write files
+        subclass_cols = self.stats_cols('subclass')
+        self.subclass_stats, self.subclass_dict = self.compute_stats('subclass', subclass_stats)
+        sub_success = self.write_csv(self.subclass_path, subclass_cols, self.subclass_dict.values())
+        class_cols = self.stats_cols('class')
+        self.class_stats, self.class_dict = self.compute_stats('class', class_stats)
+        class_success = self.write_csv(self.class_path, class_cols, self.class_dict.values())
         return sub_success, class_success
 
     def stats_cols(self, cat):
@@ -447,7 +446,7 @@ class LipidAnalysis:
             cols.append(g + ' std')
         return cols
 
-    def format_stats(self, cat, stats):
+    def compute_stats(self, cat, stats):
         rows = {}
         for name, groups in stats.items():
             row = {}
@@ -469,7 +468,7 @@ class LipidAnalysis:
             rows[name] = row
         return stats, rows
 
-    def group_stats(self, row, grp_info):
+    def group_areas(self, row, grp_info):
         # add stats for each group from the row
         for key in self.groups.keys():
             if key not in grp_info:
