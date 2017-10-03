@@ -507,11 +507,11 @@ class LipidAnalysis:
         return classes
 
     def class_plot(self):
+        # reorganize class_stats data for plotting
+        # TODO: can we avoid the need for this regoranization?
         data = {
                 'lipid': [],
-                'group': [],
                 'cnt': [],
-                'avg': [],
                 'sum': [],
                 'log_sum': [],
                 'std': [],
@@ -525,10 +525,11 @@ class LipidAnalysis:
         x = 1
         gr_data = OrderedDict()
         group_list = []
-        for lipid, groups in self.class_stats.items():
+        for lipid_class, groups in self.class_stats.items():
             for group, stats in groups.items():
                 if group not in group_list:
                     group_list.append(group)
+                # get all group level data into a list
                 if group not in gr_data:
                     gr_data[group] = {
                             'cnt': [],
@@ -543,10 +544,10 @@ class LipidAnalysis:
                 log = self.check_inf(numpy.log(stats['sum']))
                 gr_data[group]['log_sum'].append(log)
                 gr_data[group]['x'].append(x)
-                data['lipid'].append(lipid)
-                data['group'].append(group)
+
+                # lists of the data not organized by group used in plotting
+                data['lipid'].append(lipid_class)
                 data['cnt'].append(stats['cnt'])
-                data['avg'].append(self.check_inf(stats['avg']))
                 data['sum'].append(self.check_inf(stats['sum']))
                 data['log_sum'].append(log)
                 data['std'].append(self.check_inf(stats['std']))
@@ -556,7 +557,7 @@ class LipidAnalysis:
                 data['x'].append(x)
                 x += 1
             # put space between lipid groups
-            data['lipid'].append(lipid)
+            data['lipid'].append(lipid_class)
             x += 1
 
         # get relative sums
