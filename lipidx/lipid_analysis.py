@@ -481,7 +481,7 @@ class LipidAnalysis:
                 # nothing in the subclass/group
                 log = 0.0
                 if a > 0.0:
-                    log = numpy.log(a)
+                    log = numpy.log10(a)
                 log_areas.append(log)
             if max(areas) > 0.0:
                 grp_info[key]['cnt'] += 1
@@ -541,7 +541,7 @@ class LipidAnalysis:
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
                 gr_data[group]['sum'].append(self.check_inf(stats['sum']))
-                log = self.check_inf(numpy.log(stats['sum']))
+                log = self.check_inf(numpy.log10(stats['sum']))
                 gr_data[group]['log_sum'].append(log)
                 gr_data[group]['x'].append(x)
 
@@ -568,7 +568,7 @@ class LipidAnalysis:
                 relative_percent = self.check_inf(relative * 100)
                 gr_data[group]['relative'].append(relative_percent)
                 data['relative'].append(relative_percent)
-                log_relative = self.check_inf(numpy.log(relative))
+                log_relative = self.check_inf(numpy.log10(relative))
                 gr_data[group]['log_relative'].append(log_relative)
                 data['log_relative'].append(log_relative)
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
@@ -589,6 +589,7 @@ class LipidAnalysis:
         return script, div
 
     def check_inf(self, n):
+        # TODO: maybe not 0s here
         if n == float("inf") or n == float("-inf") or isnan(n):
             n = 0.0
         return n
@@ -637,7 +638,8 @@ class LipidAnalysis:
             self.cols.append('log_ratio')
             s2 = self.list_col_type(row, self.area_start + 's2')
             s1 = self.list_col_type(row, self.area_start + 's1')
-            t, p = ttest_ind(s2, s1)
+            # TODO: test with unequal var and check with Sunia's numbers
+            t, p = ttest_ind(s2, s1, equal_var = False)
             self.rows[key]['p_value'] = self.check_inf(p)
             self.cols.append('p_value')
 
@@ -677,7 +679,7 @@ class LipidAnalysis:
                         }
                     data[class_name]['lipid'].append(('Name', key))
                     data[class_name]['log2'].append(self.check_inf(row['log_ratio']))
-                    log_p = self.check_inf(numpy.log(row['p_value']) * -1)
+                    log_p = self.check_inf(numpy.log10(row['p_value']) * -1)
                     data[class_name]['p'].append(log_p)
                 y_range.append(log_p)
             p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
