@@ -78,6 +78,8 @@ class LipidAnalysis:
                         if not row_cols:
                             ln = ln.replace('\n', '')
                             row_cols = ln.split('\t')
+                            row_cols.append('ret_time')
+                            row_cols.append('name')
                         else: # data lines
                             ln = ln.replace('\n', '')
                             row = ln.split('\t')
@@ -89,12 +91,10 @@ class LipidAnalysis:
                             # calc retention time: average of GroupTopPos
                             ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
                             row_d['ret_time'] = ret_time # add to row
-                            row_cols.append('ret_time')
                             row_d.move_to_end('ret_time', last=False)
                             # unique name for row LipidIon + ret_time
                             name = row_d['LipidIon'] + '_' + str(ret_time)
                             row_d['name'] = name
-                            row_cols.append('name')
                             row_d.move_to_end('name', last=False)
                             if name in rows: # rare case
                                 # if lipid has same name then keep the one with
@@ -159,6 +159,7 @@ class LipidAnalysis:
             area_cols = self.get_cols(self.area_start)
             blank_start = self.area_start + blank
             blank_cols = self.get_cols(blank_start)
+            self.cols.append('avg_blank')
             for name, row in self.rows.items():
                 # calculate avg blank
                 avg_blank = self.calculate_avg_blank(blank_cols, row)
@@ -176,7 +177,6 @@ class LipidAnalysis:
                         include_row = True
                 if include_row:
                     row['avg_blank'] = avg_blank
-                    self.cols.append('avg_blank')
                     subtracted[name] = row
             self.rows = subtracted
 
@@ -351,7 +351,7 @@ class LipidAnalysis:
                                 # TODO: 8 dec place
                                 normal[name][col] = round(float(row[col])/intensities[sam],
                                 self.POST_NORMAL_ROUND)
-                self.recalc_cols()
+                normal = self.recalc_cols(normal)
             self.rows = normal
 
     def calc_intensities(self, area_cols):
@@ -388,7 +388,7 @@ class LipidAnalysis:
         sam = sam.split(']')
         return sam[0]
 
-    def recalc_cols(self):
+    def recalc_cols(self, normal):
         for name, row in self.rows.items():
             stats = OrderedDict()
             # for each group recalc the avg and std from areas
@@ -399,10 +399,14 @@ class LipidAnalysis:
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
             for group, val_lst in stats.items():
-                self.rows[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
-                self.cols.append('GroupAVG[' + group + ']')
-                self.rows[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
-                self.cols.append('GroupRSD[' + group + ']')
+                normal[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
+                group_avg_col = 'GroupAVG[' + group + ']'
+                # TODO: shouldn't need to check each time
+                if group_avg_col not in self.cols:
+                    self.cols.append('GroupAVG[' + group + ']')
+                    self.cols.append('GroupRSD[' + group + ']')
+                normal[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
+        return normal
 
     def calc_class_stats(self):
         # set to false if file not saved
@@ -622,6 +626,10 @@ class LipidAnalysis:
         return bar
 
     def calc_ratio(self, group1, group2):
+        self.cols.append('ratio')
+        self.cols.append('log_ratio')
+        self.cols.append('p_value')
+        self.cols.append('log_p')
         for key, row in self.rows.items():
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
@@ -631,17 +639,14 @@ class LipidAnalysis:
                 ratio = float(10.0)
             else:
                 ratio = dividend/divisor
-            log_ratio = numpy.log2(ratio)
             self.rows[key]['ratio'] = ratio
-            self.cols.append('ratio')
-            self.rows[key]['log_ratio'] = log_ratio
-            self.cols.append('log_ratio')
+            self.rows[key]['log_ratio'] = numpy.log2(ratio)
             s2 = self.list_col_type(row, self.area_start + 's2')
             s1 = self.list_col_type(row, self.area_start + 's1')
             # TODO: test with unequal var and check with Sunia's numbers
             t, p = ttest_ind(s2, s1, equal_var = False)
             self.rows[key]['p_value'] = self.check_inf(p)
-            self.cols.append('p_value')
+            self.rows[key]['log_p'] = numpy.log10(p) * -1
 
     def get_plots(self, form_data):
         plots = []
@@ -679,9 +684,8 @@ class LipidAnalysis:
                         }
                     data[class_name]['lipid'].append(('Name', key))
                     data[class_name]['log2'].append(self.check_inf(row['log_ratio']))
-                    log_p = self.check_inf(numpy.log10(row['p_value']) * -1)
-                    data[class_name]['p'].append(log_p)
-                y_range.append(log_p)
+                    data[class_name]['p'].append(self.check_inf(row['log_p']))
+                y_range.append(row['log_p'])
             p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
