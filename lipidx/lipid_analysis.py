@@ -65,7 +65,7 @@ class LipidAnalysis:
 
     def get_rows_from_files(self, paths):
         rows = OrderedDict()
-        self.cols = []
+        cols = [] # cols common to all files
         for path in paths:
             if path:
                 with open(path,'r') as f:
@@ -77,25 +77,22 @@ class LipidAnalysis:
                             continue
                         if not row_cols:
                             ln = ln.replace('\n', '')
-                            row_cols = ln.split('\t')
-                            row_cols.append('ret_time')
-                            row_cols.append('name')
+                            # these two columns added first
+                            row_cols = ['name', 'ret_time']
+                            row_cols.extend(ln.split('\t'))
                         else: # data lines
                             ln = ln.replace('\n', '')
-                            row = ln.split('\t')
+                            row = ['', ''] # filler vals for name and ret_time
+                            row.extend(ln.split('\t'))
                             # remove trailing newline
                             row[(len(row) - 1)] = row[(len(row) - 1)].strip('\n')
                             row_d = OrderedDict(zip(row_cols, row))
-                            # cols from all files must be the same
-                            row_d = self.limit_row_cols(self.cols, row_d)
                             # calc retention time: average of GroupTopPos
                             ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
                             row_d['ret_time'] = ret_time # add to row
-                            row_d.move_to_end('ret_time', last=False)
                             # unique name for row LipidIon + ret_time
                             name = row_d['LipidIon'] + '_' + str(ret_time)
                             row_d['name'] = name
-                            row_d.move_to_end('name', last=False)
                             if name in rows: # rare case
                                 # if lipid has same name then keep the one with
                                 # greater area
@@ -105,8 +102,15 @@ class LipidAnalysis:
                                     rows[name] = row_d
                             else: # add the new row
                                 rows[name] = row_d
-                if not self.cols or len(self.cols) > len(row_cols):
-                    self.cols = row_cols
+
+                # ensure cols are the same for all rows
+                if not cols: # set cols to first file
+                    cols = row_cols
+                else: # after second file ensure cols in each row are the same
+                    cols = set(cols).intersection(row_cols)
+                    for key, row in rows.items():
+                        rows[key] = self.limit_row_cols(cols, row)
+
         return rows
 
     def limit_row_cols(self, cols, row):
@@ -124,9 +128,11 @@ class LipidAnalysis:
         return keys
 
     def write_results(self):
-        # make sure results are sorted by key
+        # get a list of results sorted by key
         res = [x for y, x in sorted(self.rows.items(), key=lambda t: t[0].lower())]
-        self.write_csv(self.lipid_results_path, self.cols, res)
+        # get cols from first row
+        cols = list(res[0].keys())
+        self.write_csv(self.lipid_results_path, cols, res)
         # create a zip file for lipids and stats
         z = zipfile.ZipFile(self.zip_path, "w")
         z.write(self.lipid_results_path, self.lipid_results_file)
@@ -159,7 +165,6 @@ class LipidAnalysis:
             area_cols = self.get_cols(self.area_start)
             blank_start = self.area_start + blank
             blank_cols = self.get_cols(blank_start)
-            self.cols.append('avg_blank')
             for name, row in self.rows.items():
                 # calculate avg blank
                 avg_blank = self.calculate_avg_blank(blank_cols, row)
@@ -331,9 +336,7 @@ class LipidAnalysis:
                             if form_data[form_name]:
                                 if self.debug: # put old values in rows to debug
                                     normal[name][col + 'old'] = row[col]
-                                    self.cols.append(col + 'old')
                                     normal[name][col + 'div'] = float(form_data[form_name])
-                                    self.cols.append(col + 'div')
                                 normal[name][col] = round(row[col] / float(form_data[form_name]), self.POST_NORMAL_ROUND)
                 # use calculated intensity
                 elif form_data['normalize'] == 'intensity':
@@ -345,9 +348,7 @@ class LipidAnalysis:
                             if intensities[sam] > 0:
                                 if self.debug:
                                     normal[name][col + 'old'] = row[col]
-                                    self.cols.append(col + 'old')
                                     normal[name][col + 'div'] = intensities[sam]
-                                    self.cols.append(col + 'div')
                                 # TODO: 8 dec place
                                 normal[name][col] = round(float(row[col])/intensities[sam],
                                 self.POST_NORMAL_ROUND)
@@ -401,10 +402,6 @@ class LipidAnalysis:
             for group, val_lst in stats.items():
                 normal[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
                 group_avg_col = 'GroupAVG[' + group + ']'
-                # TODO: shouldn't need to check each time
-                if group_avg_col not in self.cols:
-                    self.cols.append('GroupAVG[' + group + ']')
-                    self.cols.append('GroupRSD[' + group + ']')
                 normal[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
         return normal
 
@@ -626,10 +623,6 @@ class LipidAnalysis:
         return bar
 
     def calc_ratio(self, group1, group2):
-        self.cols.append('ratio')
-        self.cols.append('log_ratio')
-        self.cols.append('p_value')
-        self.cols.append('log_p')
         for key, row in self.rows.items():
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
