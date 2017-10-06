@@ -77,8 +77,7 @@ class LipidAnalysis:
                             continue
                         if not row_cols:
                             ln = ln.replace('\n', '')
-                            # these two columns added first
-                            row_cols = ['name', 'ret_time']
+                            row_cols = ['name', 'ret_time'] # these two columns added first
                             row_cols.extend(ln.split('\t'))
                         else: # data lines
                             ln = ln.replace('\n', '')
@@ -352,7 +351,7 @@ class LipidAnalysis:
                                 # TODO: 8 dec place
                                 normal[name][col] = round(float(row[col])/intensities[sam],
                                 self.POST_NORMAL_ROUND)
-                normal = self.recalc_cols(normal)
+                normal = self.recalc_avg(normal)
             self.rows = normal
 
     def calc_intensities(self, area_cols):
@@ -389,19 +388,18 @@ class LipidAnalysis:
         sam = sam.split(']')
         return sam[0]
 
-    def recalc_cols(self, normal):
-        for name, row in self.rows.items():
+    def recalc_avg(self, normal):
+        for name, row in normal.items():
             stats = OrderedDict()
             # for each group recalc the avg and std from areas
             for group, nums in self.groups.items():
-                if group not in stats:
+                if group not in stats: # group like c, s1, s2
                     stats[group] = []
-                for num in nums:
+                for num in nums: # num replicates per group
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
             for group, val_lst in stats.items():
                 normal[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
-                group_avg_col = 'GroupAVG[' + group + ']'
                 normal[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
         return normal
 
