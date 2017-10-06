@@ -9,7 +9,6 @@ from flask import request
 from flask import current_app as app
 from collections import OrderedDict
 import logging
-from bokeh.charts import Bar, BoxPlot
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.models import HoverTool, ColumnDataSource, Whisker, Range1d
