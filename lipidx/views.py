@@ -64,6 +64,7 @@ def volcano():
 
         la = LipidAnalysis([file1_path])
         context['volcano_script'], context['volcano_div'] = la.volcano_plot(form.data)
+        zip_path = la.write_results()
     return render_template('volcano.html', form=form, zip_path=zip_path, **context)
 
 @app.route('/file/<filename>')

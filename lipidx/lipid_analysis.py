@@ -52,11 +52,7 @@ class LipidAnalysis:
         self.lipid_class_path = app.config['BASE_DIR'] + '/' + lipid_class_file
         self.lipid_results_file = 'lipid_analysis.csv'
         self.lipid_results_path = self.root_path + self.lipid_results_file
-        self.subclass_file = 'subclass_stats.csv'
-        self.subclass_path = self.root_path + self.subclass_file
-        self.class_file = 'class_stats.csv'
-        self.class_path = self.root_path + self.class_file
-        self.volcano_paths = {}
+        self.paths_to_zip = {}
         zip_file = 'lipid_results.zip'
         self.zip_path = self.root_path + zip_file
 
@@ -150,14 +146,10 @@ class LipidAnalysis:
         # create a zip file for lipids and stats
         z = zipfile.ZipFile(self.zip_path, "w")
         z.write(self.lipid_results_path, self.lipid_results_file)
-        if os.path.exists(self.class_path):
-            z.write(self.class_path, self.class_file)
-        if os.path.exists(self.subclass_path):
-            z.write(self.subclass_path, self.subclass_file)
-        # save any volcano files
-        for vol_file, vol_path in self.volcano_paths.items():
-            if os.path.exists(vol_path):
-                z.write(vol_path, vol_file)
+        # save any other files (volcano, class_summary)
+        for filename, path in self.paths_to_zip.items():
+            if os.path.exists(path):
+                z.write(path, filename)
         z.close
         return self.zip_path
 
@@ -443,12 +435,18 @@ class LipidAnalysis:
                 class_stats[class_name] = self.group_areas(row,
                         class_stats[class_name])
         # write files
+        class_file = 'class_stats.csv'
+        class_path = self.root_path + class_file
+        subclass_file = 'subclass_stats.csv'
+        subclass_path = self.root_path + subclass_file
         subclass_cols = self.stats_cols('subclass')
         self.subclass_stats, self.subclass_dict = self.compute_stats('subclass', subclass_stats)
-        sub_success = self.write_csv(self.subclass_path, subclass_cols, self.subclass_dict.values())
+        sub_success = self.write_csv(subclass_path, subclass_cols, self.subclass_dict.values())
+        self.paths_to_zip[subclass_file] = subclass_path
         class_cols = self.stats_cols('class')
         self.class_stats, self.class_dict = self.compute_stats('class', class_stats)
-        class_success = self.write_csv(self.class_path, class_cols, self.class_dict.values())
+        class_success = self.write_csv(class_path, class_cols, self.class_dict.values())
+        self.paths_to_zip[class_file] = class_path
         return sub_success, class_success
 
     def stats_cols(self, cat):
@@ -721,8 +719,8 @@ class LipidAnalysis:
             export_svgs(p, filename=vol_path_svg)
             export_png(p, filename=vol_path_png)
             # save paths to zip
-            self.volcano_paths[vol_file_svg] = vol_path_svg
-            self.volcano_paths[vol_file_png] = vol_path_png
+            self.paths_to_zip[vol_file_svg] = vol_path_svg
+            self.paths_to_zip[vol_file_png] = vol_path_png
             plot_list.append([p])
         if plot_list:
            script, div = components(gridplot(plot_list))

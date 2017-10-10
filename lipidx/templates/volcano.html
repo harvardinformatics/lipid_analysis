@@ -26,6 +26,10 @@
         <br>
         <input id="submit" name="submit" type="submit" value="Submit">
     </form>
+    {% if zip_path %}
+        <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
+            target="_blank">Download Lipid Analysis File</a>
+    {% endif %}
     {% if volcano_div %}
         {{volcano_div|safe}}
     {% endif %}
