@@ -538,7 +538,7 @@ class LipidAnalysis:
                             'log_relative':[]
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
-                gr_data[group]['sum'].append(self.check_inf(stats['sum']))
+                gr_data[group]['sum'].append(stats['sum'])
                 # don't try to take log of 0
                 log = 0.0
                 if stats['sum'] > 1.0:
@@ -549,12 +549,12 @@ class LipidAnalysis:
                 # lists of the data not organized by group used in plotting
                 data['lipid'].append(lipid_class)
                 data['cnt'].append(stats['cnt'])
-                data['sum'].append(self.check_inf(stats['sum']))
+                data['sum'].append(stats['sum'])
                 data['log_sum'].append(log)
-                data['std'].append(self.check_inf(stats['std']))
-                data['log_std'].append(self.check_inf(stats['log_std']))
-                data['lower'].append(self.check_inf(stats['sum'] - stats['std']))
-                data['upper'].append(self.check_inf(stats['sum'] + stats['std']))
+                data['std'].append(stats['std'])
+                data['log_std'].append(stats['log_std'])
+                data['lower'].append(stats['sum'] - stats['std'])
+                data['upper'].append(stats['sum'] + stats['std'])
                 data['x'].append(x)
                 x += 1
             # put space between lipid groups
@@ -595,16 +595,6 @@ class LipidAnalysis:
         script, div = components(bars)
         return script, div
 
-    def check_inf(self, n):
-        # TODO: maybe not 0s here
-        if n == float("inf"):
-            print("inf")
-            n = 10000000000
-        elif n == float("-inf") or isnan(n):
-            print("neg inf")
-            n = 0.00000000001
-        return n
-
     def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = False):
         if y_reverse:
             top = min(y_range)
@@ -636,6 +626,7 @@ class LipidAnalysis:
         for key, row in self.rows.items():
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
+            # set ratio artificaly to 0.1 or 10 if zero
             if dividend == 0.0:
                 ratio = float(0.1)
             elif divisor == 0.0:
@@ -648,7 +639,7 @@ class LipidAnalysis:
             s1 = self.list_col_type(row, self.area_start + 's1')
             # TODO: test with unequal var and check with Sunia's numbers
             t, p = ttest_ind(s2, s1, equal_var = False)
-            self.rows[key]['p_value'] = self.check_inf(p)
+            self.rows[key]['p_value'] = p
             self.rows[key]['log_p'] = numpy.log10(p) * -1
 
     def get_plots(self, form_data):
@@ -686,8 +677,8 @@ class LipidAnalysis:
                                 'p': []
                         }
                     data[class_name]['lipid'].append(('Name', key))
-                    data[class_name]['log2'].append(self.check_inf(row['log_ratio']))
-                    data[class_name]['p'].append(self.check_inf(row['log_p']))
+                    data[class_name]['log2'].append(row['log_ratio'])
+                    data[class_name]['p'].append(row['log_p'])
                 y_range.append(row['log_p'])
             p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
