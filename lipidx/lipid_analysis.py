@@ -56,10 +56,7 @@ class LipidAnalysis:
         self.subclass_path = self.root_path + self.subclass_file
         self.class_file = 'class_stats.csv'
         self.class_path = self.root_path + self.class_file
-        self.volcano_svg = 'volcano.svg'
-        self.volcano_svg_path = self.root_path + self.volcano_svg
-        self.volcano_png = 'volcano.png'
-        self.volcano_png_path = self.root_path + self.volcano_png
+        self.volcano_paths = {}
         zip_file = 'lipid_results.zip'
         self.zip_path = self.root_path + zip_file
 
@@ -157,10 +154,10 @@ class LipidAnalysis:
             z.write(self.class_path, self.class_file)
         if os.path.exists(self.subclass_path):
             z.write(self.subclass_path, self.subclass_file)
-        if os.path.exists(self.volcano_svg_path):
-            z.write(self.volcano_svg_path, self.volcano_svg)
-        if os.path.exists(self.volcano_png_path):
-            z.write(self.volcano_png_path, self.volcano_png)
+        # save any volcano files
+        for vol_file, vol_path in self.volcano_paths.items():
+            if os.path.exists(vol_path):
+                z.write(vol_path, vol_file)
         z.close
         return self.zip_path
 
@@ -641,7 +638,7 @@ class LipidAnalysis:
         return bar
 
     def calc_ratio(self, group1, group2):
-        ratio_name = group1 + '/' + group2
+        ratio_name = group1 + '-div-' + group2
         for key, row in self.rows.items():
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
@@ -712,8 +709,16 @@ class LipidAnalysis:
                 palette_key += 1
             p.legend.click_policy = 'hide'
             p.output_backend = 'svg'
-            export_svgs(p, filename=self.volcano_svg_path)
-            export_png(p, filename=self.volcano_png_path)
+            vol_file = 'volcano_' + ratio_name
+            vol_file_svg = vol_file + '.svg'
+            vol_file_png = vol_file + '.png'
+            vol_path_svg = self.root_path + vol_file_svg
+            vol_path_png = self.root_path + vol_file_png
+            export_svgs(p, filename=vol_path_svg)
+            export_png(p, filename=vol_path_png)
+            # save paths to zip
+            self.volcano_paths[vol_file_svg] = vol_path_svg
+            self.volcano_paths[vol_file_png] = vol_path_png
             plot_list.append([p])
         if plot_list:
            script, div = components(gridplot(plot_list))
