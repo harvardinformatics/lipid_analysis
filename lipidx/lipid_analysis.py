@@ -539,7 +539,10 @@ class LipidAnalysis:
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
                 gr_data[group]['sum'].append(self.check_inf(stats['sum']))
-                log = self.check_inf(numpy.log10(stats['sum']))
+                # don't try to take log of 0
+                log = 0.0
+                if stats['sum'] > 1.0:
+                    log = numpy.log10(stats['sum'])
                 gr_data[group]['log_sum'].append(log)
                 gr_data[group]['x'].append(x)
 
@@ -562,11 +565,17 @@ class LipidAnalysis:
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
                 gr_sum = numpy.sum(gr_data[group]['sum'])
-                relative = self.check_inf(stats['sum'] / gr_sum)
-                relative_percent = self.check_inf(relative * 100)
+                # replace with a small value rather than divide by zero
+                if gr_sum <= 0.0:
+                    gr_sum = 0.1
+                relative = stats['sum'] / gr_sum
+                relative_percent = relative * 100
                 gr_data[group]['relative'].append(relative_percent)
                 data['relative'].append(relative_percent)
-                log_relative = self.check_inf(numpy.log10(relative))
+                # prevent taking the log of 0
+                log_relative = 0.0
+                if relative > 0.0:
+                    log_relative = numpy.log10(relative)
                 gr_data[group]['log_relative'].append(log_relative)
                 data['log_relative'].append(log_relative)
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
@@ -588,8 +597,12 @@ class LipidAnalysis:
 
     def check_inf(self, n):
         # TODO: maybe not 0s here
-        if n == float("inf") or n == float("-inf") or isnan(n):
-            n = 0.0
+        if n == float("inf"):
+            print("inf")
+            n = 10000000000
+        elif n == float("-inf") or isnan(n):
+            print("neg inf")
+            n = 0.00000000001
         return n
 
     def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = False):
