@@ -663,7 +663,7 @@ class LipidAnalysis:
     def get_plots(self, form_data):
         plots = []
         prefix = 'group'
-        for g in range(1, self.MAX_VOLCANO_PLOTS):
+        for g in range(1, (self.MAX_VOLCANO_PLOTS * 2), 2):
             group1 = prefix + str(g)
             group2 = prefix + str(g + 1)
             if (form_data[group1] and form_data[group2] and form_data[group1] in
