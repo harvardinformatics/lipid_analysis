@@ -1,6 +1,7 @@
 import csv
 import os
 import numpy
+import re
 from math import pi, isnan
 from scipy.stats import ttest_ind
 import zipfile
@@ -62,9 +63,13 @@ class LipidAnalysis:
         zip_file = 'lipid_results.zip'
         self.zip_path = self.root_path + zip_file
 
+        # set lipid classes
+        self.class_keys = self.load_lipid_classes()
+
     def get_rows_from_files(self, paths):
         rows = OrderedDict()
         cols = [] # cols common to all files
+        set_name = True
         for path in paths:
             if path:
                 with open(path,'r') as f:
@@ -76,21 +81,35 @@ class LipidAnalysis:
                             continue
                         if not row_cols:
                             ln = ln.replace('\n', '')
-                            row_cols = ['name', 'ret_time'] # these two columns added first
-                            row_cols.extend(ln.split('\t'))
+                            file_cols = re.split('\t|,', ln)
+                            # Only add name and ret_time if not there
+                            # for volcano only it will already be there
+                            if 'name' in file_cols:
+                                set_name = False
+                                row_cols = file_cols
+                            else:
+                                row_cols = ['name', 'ret_time'] # these two columns added first
+                                row_cols.extend(file_cols)
                         else: # data lines
                             ln = ln.replace('\n', '')
-                            row = ['', ''] # filler vals for name and ret_time
-                            row.extend(ln.split('\t'))
+                            file_row = re.split('\t|,', ln)
+                            if set_name:
+                                row = ['', ''] # filler vals for name and ret_time
+                                row.extend(file_row)
+                            else:
+                                row = file_row
                             # remove trailing newline
                             row[(len(row) - 1)] = row[(len(row) - 1)].strip('\n')
                             row_d = OrderedDict(zip(row_cols, row))
-                            # calc retention time: average of GroupTopPos
-                            ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
-                            row_d['ret_time'] = ret_time # add to row
-                            # unique name for row LipidIon + ret_time
-                            name = row_d['LipidIon'] + '_' + str(ret_time)
-                            row_d['name'] = name
+                            if set_name: # not necessary if volcano only
+                                # calc retention time: average of GroupTopPos
+                                ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
+                                row_d['ret_time'] = ret_time # add to row
+                                # unique name for row LipidIon + ret_time
+                                name = row_d['LipidIon'] + '_' + str(ret_time)
+                                row_d['name'] = name
+                            else:
+                                name = row_d['name']
                             if name in rows: # rare case
                                 # if lipid has same name then keep the one with
                                 # greater area
@@ -406,7 +425,6 @@ class LipidAnalysis:
         # set to false if file not saved
         sub_success = True
         class_success = True
-        self.class_keys = self.load_lipid_classes()
         class_stats = {}
         subclass_stats = {}
         for name, row in self.rows.items():
