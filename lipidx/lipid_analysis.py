@@ -641,6 +641,7 @@ class LipidAnalysis:
         return bar
 
     def calc_ratio(self, group1, group2):
+        ratio_name = group1 + '/' + group2
         for key, row in self.rows.items():
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
@@ -651,14 +652,15 @@ class LipidAnalysis:
                 ratio = float(10.0)
             else:
                 ratio = dividend/divisor
-            self.rows[key]['ratio'] = ratio
-            self.rows[key]['log_ratio'] = numpy.log2(ratio)
+            self.rows[key][ratio_name] = ratio
+            self.rows[key]['log_' + ratio_name] = numpy.log2(ratio)
             s2 = self.list_col_type(row, self.area_start + 's2')
             s1 = self.list_col_type(row, self.area_start + 's1')
             # TODO: test with unequal var and check with Sunia's numbers
             t, p = ttest_ind(s2, s1, equal_var = False)
-            self.rows[key]['p_value'] = p
-            self.rows[key]['log_p'] = numpy.log10(p) * -1
+            self.rows[key]['p_value_' + ratio_name] = p
+            self.rows[key]['log_p_' + ratio_name] = numpy.log10(p) * -1
+        return ratio_name
 
     def get_plots(self, form_data):
         plots = []
@@ -680,13 +682,13 @@ class LipidAnalysis:
             self.class_keys = self.load_lipid_classes()
         y_range = []
         for (group1, group2) in plots:
-            self.calc_ratio(group1, group2)
+            ratio_name = self.calc_ratio(group1, group2)
             data = {}
             for key, row in self.rows.items():
                 subclass_key = row['Class']
                 # prevent empty or Inf values which break json encode in bokeh
-                if (subclass_key in self.class_keys and row['log_ratio'] and
-                row['p_value'] and key):
+                if (subclass_key in self.class_keys and row['log_' + ratio_name] and
+                row['p_value_' + ratio_name] and key):
                     class_name = self.class_keys[subclass_key]['class']
                     if class_name not in data:
                         data[class_name] = {
@@ -695,10 +697,10 @@ class LipidAnalysis:
                                 'p': []
                         }
                     data[class_name]['lipid'].append(('Name', key))
-                    data[class_name]['log2'].append(row['log_ratio'])
-                    data[class_name]['p'].append(row['log_p'])
-                y_range.append(row['log_p'])
-            p = figure(title = (group1 + ' vs ' + group2), x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
+                    data[class_name]['log2'].append(row['log_' + ratio_name])
+                    data[class_name]['p'].append(row['log_p_' + ratio_name])
+                y_range.append(row['log_p_' + ratio_name])
+            p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
             ])
