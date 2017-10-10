@@ -1,50 +1,18 @@
 from flask import (request, current_app, render_template,
     send_from_directory)
 from lipidx.lipid_analysis import LipidAnalysis
-from lipidx.forms import LipidAnalysisForm
+from lipidx import forms
 from lipidx import app
 import logging
 import sys, os
-#import plotly
-#from plotly.graph.objs import Scatter, Layout
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import HoverTool, Whisker, ColumnDataSource, Span, Range1d
 from bokeh.embed import components
 
-@app.route('/')
-def hello():
-    x = [1,2,3,4,5]
-    y = [6,7,2,4,5]
-    output_file('test.html')
-    TOOLS = "hover"
-    p = figure(title='test', tools=TOOLS, x_axis_label = 'x', y_axis_label = 'y')
-    p.circle(x, y, size=10, color="red", legend='Temp.', alpha=0.5)
-    p.y_range = Range1d(max(y), min(y))
-    p.legend.click_policy = 'hide'
-    base = x
-    upper = [7,7.1,3,4.5,5.5]
-    lower = [2,2,2,2,2]
-    errors = ColumnDataSource(data=dict(base=base, lower=lower, upper=upper))
-    p.add_layout(Whisker(source=errors, base='base', upper='upper',
-    lower='lower'))
-    p.add_layout(Span(location=1.5, dimension='height', line_color='green',
-        line_dash='dashed'))
-    hover = p.select_one(HoverTool)
-    hover.point_policy = "follow_mouse"
-    hover.tooltips = [
-            ("Name", "test")
-    ]
-    script, div = components(p)
-    '''plotly.offline.plot({
-        'data': [Scatter(x=[1,2,3,4], y=[4,3,2,1])],
-        'layout': Layout(title='test')
-    })'''
-    return render_template('scatter.html', script = script, div = div)
-
 @app.route('/lipid_analysis/', methods=['GET', 'POST'])
 def lipid_analysis():
     form_data = request.form
-    form = LipidAnalysisForm()
+    form = forms.LipidAnalysisForm()
     zip_path = None
     script = None
     div = None
@@ -79,6 +47,24 @@ def lipid_analysis():
         context['volcano_script'], context['volcano_div'] = la.volcano_plot(form.data)
         zip_path = la.write_results()
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
+
+@app.route('/volcano/', methods=['GET', 'POST'])
+def volcano():
+    form_data = request.form
+    form = forms.VolcanoForm()
+    zip_path = None
+    script = None
+    div = None
+    context = {}
+    if form.validate_on_submit():
+        root_path = app.config['UPLOAD_FOLDER']
+        file1 = request.files[form.file1.name]
+        file1.save(root_path + 'file1.txt')
+        file1_path = root_path + 'file1.txt'
+
+        la = LipidAnalysis([file1_path])
+        context['volcano_script'], context['volcano_div'] = la.volcano_plot(form.data)
+    return render_template('volcano.html', form=form, zip_path=zip_path, **context)
 
 @app.route('/file/<filename>')
 def file(filename):

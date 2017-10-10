@@ -65,6 +65,12 @@ class LipidAnalysisForm(FlaskForm):
     group5 = StringField('group5')
     group6 = StringField('group6')
 
-
-
-
+class VolcanoForm(FlaskForm):
+    file_msg = 'Must submit a file to process'
+    file1 = FileField('File 1', [FileRequired()])
+    group1 = StringField('group1')
+    group2 = StringField('group2')
+    group3 = StringField('group3')
+    group4 = StringField('group4')
+    group5 = StringField('group5')
+    group6 = StringField('group6')

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{%- block styles %}
+    {{ super() }}
+    <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bokeh-0.12.6.min.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content_title %}
+<h1>Volcano Ploti</h1>
+<p>Use results from <a href="{{url_for('lipid_analysis')}}">lipid analysis</a></p>
+{%- endblock content_title %}
+{% block page_content %}
+    <form action="{{ url_for('volcano') }}" method="POST" name="volcano_form" class="form_table" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <fieldset>
+        <legend>Lipid analysis results file</legend>
+            {{ macros.render_field(form.file1) }}
+        </fieldset>
+        <fieldset>
+        <legend>Volcano plots (optional)</legend>
+            Enter up to 3 pairs of groups to compare in volcano plots.<br>
+            {{ macros.render_field(form.group1, False) }}  /  {{ macros.render_field(form.group2, False) }}<br>
+            {{ macros.render_field(form.group3, False) }}  /  {{ macros.render_field(form.group4, False) }}<br>
+            {{ macros.render_field(form.group5, False) }}  /  {{ macros.render_field(form.group6, False) }}<br>
+        </fieldset>
+        <br>
+        <input id="submit" name="submit" type="submit" value="Submit">
+    </form>
+    {% if volcano_div %}
+        {{volcano_div|safe}}
+    {% endif %}
+{% endblock page_content %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    {% if volcano_script %}
+        {{volcano_script|safe}}
+    {% endif %}
+{% endblock %}
