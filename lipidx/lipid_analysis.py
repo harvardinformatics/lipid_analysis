@@ -24,6 +24,9 @@ class LipidAnalysis:
     ROUND_TO = 2
     POST_NORMAL_ROUND = 8
     NEGATIVE_IONS_WITH_PLUS = ['HCOO', 'CH3COO', 'CL']
+    # limited cols as a string because remove cols takes a string (for now)
+    LIMITED_COLS = '''name, ret_time, LipidIon, Class, FattyAcid, FA1, FA2, FA3,
+        FA4, CalcMz, IonFormula, Area, ratio, p_value'''
     MAX_VOLCANO_PLOTS = 3
 
     def __init__ (self, paths, debug = False):
@@ -52,6 +55,8 @@ class LipidAnalysis:
         self.lipid_class_path = app.config['BASE_DIR'] + '/' + lipid_class_file
         self.lipid_results_file = 'lipid_analysis.csv'
         self.lipid_results_path = self.root_path + self.lipid_results_file
+        self.lipid_results_limited_file = 'lipid_analysis_summary.csv'
+        self.lipid_results_limited_path = self.root_path + self.lipid_results_limited_file
         self.paths_to_zip = {}
         zip_file = 'lipid_results.zip'
         self.zip_path = self.root_path + zip_file
@@ -143,9 +148,15 @@ class LipidAnalysis:
         # get cols from first row
         cols = list(res[0].keys())
         self.write_csv(self.lipid_results_path, cols, res)
+        # save results with limited cols
+        self.remove_columns(self.LIMITED_COLS, whitelist = True)
+        res = [x for y, x in sorted(self.rows.items(), key=lambda t: t[0].lower())]
+        cols = list(res[0].keys())
+        self.write_csv(self.lipid_results_limited_path, cols, res)
         # create a zip file for lipids and stats
         z = zipfile.ZipFile(self.zip_path, "w")
         z.write(self.lipid_results_path, self.lipid_results_file)
+        z.write(self.lipid_results_limited_path, self.lipid_results_limited_file)
         # save any other files (volcano, class_summary)
         for filename, path in self.paths_to_zip.items():
             if os.path.exists(path):
@@ -198,7 +209,7 @@ class LipidAnalysis:
                     blank_vals.append(float(row[col]))
             return round(numpy.mean(blank_vals), self.ROUND_TO)
 
-    def remove_columns(self, remove_cols):
+    def remove_columns(self, remove_cols, whitelist = False):
         if self.rows:
             # ensure user entered cols are lowercase and without spaces
             remove_cols = [x.strip().lower() for x in remove_cols.split(',')]
@@ -211,9 +222,14 @@ class LipidAnalysis:
                     removed_cols.append(col)
             for name, row in self.rows.items():
                 new_row = OrderedDict()
-                for col, val in row.items():
-                    if col not in removed_cols:
-                        new_row[col] = val
+                if whitelist: # include only cols from input
+                    for col, val in row.items():
+                        if col in removed_cols:
+                            new_row[col] = val
+                else: # remove cols from input
+                    for col, val in row.items():
+                        if col not in removed_cols:
+                            new_row[col] = val
                 clean_selected[name] = new_row
             self.rows = clean_selected
 
@@ -637,10 +653,11 @@ class LipidAnalysis:
 
     def calc_ratio(self, group1, group2):
         ratio_name = group1 + '-div-' + group2
+        ratio_col_name = 'ratio[' + ratio_name + ']'
         for key, row in self.rows.items():
             # only calculate ratio if it's not already there
             # it will already be there for ppl using volcano endpoint
-            if ratio_name in row:
+            if ratio_col_name in row:
                 return ratio_name
             dividend = float(row['GroupArea[' + group1 + ']'])
             divisor = float(row['GroupArea[' + group2 + ']'])
@@ -651,14 +668,14 @@ class LipidAnalysis:
                 ratio = float(10.0)
             else:
                 ratio = dividend/divisor
-            self.rows[key][ratio_name] = ratio
-            self.rows[key]['log_' + ratio_name] = numpy.log2(ratio)
+            self.rows[key][ratio_col_name] = ratio
+            self.rows[key]['log_ratio[' + ratio_name + ']'] = numpy.log2(ratio)
             s2 = self.list_col_type(row, self.area_start + 's2')
             s1 = self.list_col_type(row, self.area_start + 's1')
             # TODO: test with unequal var and check with Sunia's numbers
             t, p = ttest_ind(s2, s1, equal_var = False)
-            self.rows[key]['p_value_' + ratio_name] = p
-            self.rows[key]['log_p_' + ratio_name] = numpy.log10(p) * -1
+            self.rows[key]['p_value[' + ratio_name + ']'] = p
+            self.rows[key]['log_p_value[' + ratio_name + ']'] = numpy.log10(p) * -1
         return ratio_name
 
     def get_plots(self, form_data):
@@ -685,20 +702,19 @@ class LipidAnalysis:
             data = {}
             for key, row in self.rows.items():
                 subclass_key = row['Class']
-                # prevent empty or Inf values which break json encode in bokeh
-                if (subclass_key in self.class_keys and row['log_' + ratio_name] and
-                row['p_value_' + ratio_name] and key):
-                    class_name = self.class_keys[subclass_key]['class']
-                    if class_name not in data:
-                        data[class_name] = {
-                                'lipid': [],
-                                'log2': [],
-                                'p': []
-                        }
-                    data[class_name]['lipid'].append(('Name', key))
-                    data[class_name]['log2'].append(row['log_' + ratio_name])
-                    data[class_name]['p'].append(row['log_p_' + ratio_name])
-                y_range.append(row['log_p_' + ratio_name])
+                class_name = self.class_keys[subclass_key]['class']
+                if class_name not in data:
+                    data[class_name] = {
+                            'lipid': [],
+                            'log2': [],
+                            'p': []
+                    }
+                data[class_name]['lipid'].append(('Name', key))
+                data[class_name]['log2'].append(row['log_ratio[' + ratio_name +
+                    ']'])
+                data[class_name]['p'].append(row['log_p_value[' + ratio_name +
+                ']'])
+                y_range.append(row['log_p_value[' + ratio_name + ']'])
             p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid")
