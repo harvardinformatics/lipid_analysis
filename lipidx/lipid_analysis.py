@@ -25,16 +25,16 @@ class LipidAnalysis:
     POST_NORMAL_ROUND = 8
     NEGATIVE_IONS_WITH_PLUS = ['HCOO', 'CH3COO', 'CL']
     # limited cols as a string because remove cols takes a string (for now)
-    LIMITED_COLS = '''name, ret_time, LipidIon, Class, FattyAcid, FA1, FA2, FA3,
-        FA4, CalcMz, IonFormula, Area, ratio, p_value'''
+    LIMITED_COLS = '''name, ret_time, lipidion, class, fattyacid, fa1, fa2, fa3,
+        fa4, calcmz, ionformula, area, ratio, p_value'''
     MAX_VOLCANO_PLOTS = 3
 
     def __init__ (self, paths, debug = False):
         self.paths = paths
         # debug adds cols to results to show pre normalized values
         self.debug = debug
-        self.area_start = 'Area['
-        self.group_area_start = 'GroupArea['
+        self.area_start = 'area['
+        self.group_area_start = 'grouparea['
         self.groups = {}
 
         # cols should be the same in all files
@@ -98,13 +98,15 @@ class LipidAnalysis:
                                 row = file_row
                             # remove trailing newline
                             row[(len(row) - 1)] = row[(len(row) - 1)].strip('\n')
+                            # lowercase the cols before creating dictionary
+                            row_cols = [x.lower() for x in row_cols]
                             row_d = OrderedDict(zip(row_cols, row))
                             if set_name: # not necessary if volcano only
                                 # calc retention time: average of GroupTopPos
-                                ret_time = round(numpy.mean(self.list_col_type(row_d, 'GroupTopPos')), self.ROUND_TO)
+                                ret_time = round(numpy.mean(self.list_col_type(row_d, 'grouptoppos')), self.ROUND_TO)
                                 row_d['ret_time'] = ret_time # add to row
                                 # unique name for row LipidIon + ret_time
-                                name = row_d['LipidIon'] + '_' + str(ret_time)
+                                name = row_d['lipidion'] + '_' + str(ret_time)
                                 row_d['name'] = name
                             else:
                                 name = row_d['name']
@@ -306,7 +308,7 @@ class LipidAnalysis:
         # rejects must be removed before grouping ions
         selected = {}
         for name, row in self.rows.items():
-            if row['Rej.'] == '0':
+            if row['rej.'] == '0':
                 selected[name] = row
         self.rows = selected
 
@@ -324,18 +326,18 @@ class LipidAnalysis:
             group_area_fil, group_height_fil):
         if float(row['ret_time']) <= ret_time_fil:
             return False
-        group_pq_max = max(self.list_col_type(row, 'GroupPQ'))
+        group_pq_max = max(self.list_col_type(row, 'grouppq'))
         if group_pq_max <= group_pq_fil:
             return False
-        group_sn_max = max(self.list_col_type(row, 'GroupS/N'))
+        group_sn_max = max(self.list_col_type(row, 'groups/n'))
         if group_sn_max <= group_sn_fil:
             return False
         if group_area_fil > 0: # all values are pos ints, so skip if 0
-            group_area_max = max(self.list_col_type(row, 'GroupArea'))
+            group_area_max = max(self.list_col_type(row, 'grouparea'))
             if group_area_max <= group_area_fil:
                 return False
         if group_height_fil > 0: # all values are pos ints, so skip if 0
-            group_height_max = max(self.list_col_type(row, 'GroupHeight'))
+            group_height_max = max(self.list_col_type(row, 'groupheight'))
             if group_height_max <= group_height_fil:
                 return False
         return True
@@ -422,8 +424,8 @@ class LipidAnalysis:
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
             for group, val_lst in stats.items():
-                normal[name]['GroupAVG[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
-                normal[name]['GroupRSD[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
+                normal[name]['groupavg[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
+                normal[name]['grouprsd[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
         return normal
 
     def calc_class_stats(self):
@@ -434,7 +436,7 @@ class LipidAnalysis:
         subclass_stats = {}
         for name, row in self.rows.items():
             # take subclass key from row
-            subclass_key = row['Class']
+            subclass_key = row['class']
             if subclass_key in self.class_keys:
                 # get corresponding names from class_keys
                 subclass_name = self.class_keys[subclass_key]['subclass']
@@ -659,8 +661,8 @@ class LipidAnalysis:
             # it will already be there for ppl using volcano endpoint
             if ratio_col_name in row:
                 return ratio_name
-            dividend = float(row['GroupArea[' + group1 + ']'])
-            divisor = float(row['GroupArea[' + group2 + ']'])
+            dividend = float(row[self.group_area_start + group1 + ']'])
+            divisor = float(row[self.group_area_start + group2 + ']'])
             # set ratio artificaly to 0.1 or 10 if zero
             if dividend == 0.0:
                 ratio = float(0.1)
@@ -670,10 +672,9 @@ class LipidAnalysis:
                 ratio = dividend/divisor
             self.rows[key][ratio_col_name] = ratio
             self.rows[key]['log_ratio[' + ratio_name + ']'] = numpy.log2(ratio)
-            s2 = self.list_col_type(row, self.area_start + 's2')
-            s1 = self.list_col_type(row, self.area_start + 's1')
-            # TODO: test with unequal var and check with Sunia's numbers
-            t, p = ttest_ind(s2, s1, equal_var = False)
+            dividend_list = self.list_col_type(row, self.area_start + group1)
+            divisor_list = self.list_col_type(row, self.area_start + group2)
+            t, p = ttest_ind(dividend_list, divisor_list, equal_var = False)
             self.rows[key]['p_value[' + ratio_name + ']'] = p
             self.rows[key]['log_p_value[' + ratio_name + ']'] = numpy.log10(p) * -1
         return ratio_name
@@ -684,13 +685,16 @@ class LipidAnalysis:
         for g in range(1, (self.MAX_VOLCANO_PLOTS * 2), 2):
             group1 = prefix + str(g)
             group2 = prefix + str(g + 1)
-            if (form_data[group1] and form_data[group2] and form_data[group1] in
-            self.groups and form_data[group2] in self.groups):
-                plots.append((form_data[group1], form_data[group2]))
+            if (form_data[group1] and form_data[group2] and
+                    form_data[group1].lower() in
+            self.groups and form_data[group2].lower() in self.groups):
+                plots.append((form_data[group1].lower(),
+                    form_data[group2].lower()))
         return plots
 
     def volcano_plot(self, form_data):
         plots = self.get_plots(form_data)
+        print(plots)
         plot_list = []
         script = None
         div = None
@@ -701,7 +705,7 @@ class LipidAnalysis:
             ratio_name = self.calc_ratio(group1, group2)
             data = {}
             for key, row in self.rows.items():
-                subclass_key = row['Class']
+                subclass_key = row['class']
                 class_name = self.class_keys[subclass_key]['class']
                 if class_name not in data:
                     data[class_name] = {
@@ -709,6 +713,7 @@ class LipidAnalysis:
                             'log2': [],
                             'p': []
                     }
+                # TODO: fix the lipid being used as labels
                 data[class_name]['lipid'].append(('Name', key))
                 data[class_name]['log2'].append(row['log_ratio[' + ratio_name +
                     ']'])
