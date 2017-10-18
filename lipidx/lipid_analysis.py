@@ -12,7 +12,8 @@ from collections import OrderedDict
 import logging
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
-from bokeh.models import HoverTool, ColumnDataSource, Whisker, Range1d
+from bokeh.models import (HoverTool, ColumnDataSource, Whisker, Range1d,
+    BoxAnnotation)
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
@@ -694,7 +695,6 @@ class LipidAnalysis:
 
     def volcano_plot(self, form_data):
         plots = self.get_plots(form_data)
-        print(plots)
         plot_list = []
         script = None
         div = None
@@ -732,6 +732,9 @@ class LipidAnalysis:
                 p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
                         source = source)
                 palette_key += 1
+            box = BoxAnnotation(plot=p, top=2, bottom=0, right=2, left=-2,
+                    fill_alpha=0.1, fill_color='black')
+            p.renderers.extend([box])
             p.legend.click_policy = 'hide'
             p.output_backend = 'svg'
             vol_file = 'volcano_' + ratio_name
