@@ -609,12 +609,12 @@ class LipidAnalysis:
                     log_relative = numpy.log10(relative)
                 gr_data[group]['log_relative'].append(log_relative)
                 data['log_relative'].append(log_relative)
-        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Nb of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
-        bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Intensity',
+        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
+        bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area',
         'sum of area per group', data['lipid'], data['sum'], 'std')
-        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Intensity, log', 'sum of area per group', data['lipid'], data['log_sum'], 'log_std')
-        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative intensity', 'sum of area per group / total sum of area', data['lipid'], data['relative'])
-        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'log_relative', 'Relative intensity, log', 'sum of area per group / total sum of area', data['lipid'], data['log_relative'], None, True)
+        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Area, log', 'sum of area per group', data['lipid'], data['log_sum'], 'log_std')
+        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area', data['lipid'], data['relative'])
+        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'log_relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['log_relative'], None, True)
 
         bars = gridplot(
                 [bar_cnt],
@@ -654,7 +654,7 @@ class LipidAnalysis:
         return bar
 
     def calc_ratio(self, group1, group2):
-        ratio_name = group1 + '-div-' + group2
+        ratio_name = group1 + '-over-' + group2
         ratio_col_name = 'ratio[' + ratio_name + ']'
         for key, row in self.rows.items():
             # only calculate ratio if it's not already there
@@ -714,7 +714,7 @@ class LipidAnalysis:
                             'p': []
                     }
                 # TODO: fix the lipid being used as labels
-                data[class_name]['lipid'].append(('Name', key))
+                data[class_name]['lipid'].append(key)
                 data[class_name]['log2'].append(row['log_ratio[' + ratio_name +
                     ']'])
                 data[class_name]['p'].append(row['log_p_value[' + ratio_name +
@@ -722,7 +722,9 @@ class LipidAnalysis:
                 y_range.append(row['log_p_value[' + ratio_name + ']'])
             p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
-                ('name', "@lipid")
+                ('name', "@lipid"),
+                ('ratio', "@log2"),
+                ('p value', "@p")
             ])
             p.add_tools(hover)
             palette_key = 0
