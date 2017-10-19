@@ -23,6 +23,8 @@ class LipidAnalysisForm(FlaskForm):
     GROUP_AREA_DEFAULT = 0
     GROUP_HEIGHT_DEFAULT = 0
     MULT_FACTOR_DEFAULT = 3
+    RATIO_HIGHLIGHT_DEFAULT = 2.0
+    PVALUE_HIGHLIGHT_DEFAULT = 0.05
 
     COLS_TO_REMOVE = ['ARatio', 'HRatio', 'ADiff', 'HDiff', 'GroupHeight', 'HeightRSD',
         'Height', 'NormArea', 'NormHeight', 'Hwhm(L)', 'Hwhm(R)', 'AreaScore', 'DataId', 'Scan',
@@ -64,8 +66,14 @@ class LipidAnalysisForm(FlaskForm):
     group4 = StringField('group4')
     group5 = StringField('group5')
     group6 = StringField('group6')
+    ratio_highlight = FloatField('Hightlight greater than or less than ratio', default =
+            RATIO_HIGHLIGHT_DEFAULT)
+    pvalue_highlight = FloatField('Hightlight pvalue above', default = PVALUE_HIGHLIGHT_DEFAULT)
 
 class VolcanoForm(FlaskForm):
+    #TODO: factor out the common form bits
+    RATIO_HIGHLIGHT_DEFAULT = 2.0
+    PVALUE_HIGHLIGHT_DEFAULT = 0.05
     file_msg = 'Must submit a file to process'
     file1 = FileField('File 1', [FileRequired()])
     group1 = StringField('group1')
@@ -74,3 +82,6 @@ class VolcanoForm(FlaskForm):
     group4 = StringField('group4')
     group5 = StringField('group5')
     group6 = StringField('group6')
+    ratio_highlight = FloatField('Hightlight greater than or less than ratio', default =
+            RATIO_HIGHLIGHT_DEFAULT)
+    pvalue_highlight = FloatField('Hightlight pvalue above', default = PVALUE_HIGHLIGHT_DEFAULT)

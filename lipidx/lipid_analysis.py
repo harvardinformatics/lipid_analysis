@@ -9,6 +9,7 @@ import re
 from flask import request
 from flask import current_app as app
 from collections import OrderedDict
+from lipidx.forms import LipidAnalysisForm
 import logging
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
@@ -695,6 +696,15 @@ class LipidAnalysis:
 
     def volcano_plot(self, form_data):
         plots = self.get_plots(form_data)
+        # set params for highlight of up and down reg regions
+        ratio_highlight = form_data['ratio_highlight']
+        pvalue_highlight = form_data['pvalue_highlight']
+        if ratio_highlight <= 0:
+            ratio_highlight = LipidAnalysisForm.RATIO_HIGHLIGHT_DEFAULT
+        if pvalue_highlight <= 0:
+            pvalue_highlight = LipidAnalysisForm.PVALUE_HIGHLIGHT_DEFAULT
+        ratio_highlight = numpy.log2(ratio_highlight)
+        pvalue_highlight = (numpy.log10(pvalue_highlight) * -1.0)
         plot_list = []
         script = None
         div = None
@@ -727,14 +737,16 @@ class LipidAnalysis:
                 ('p value', "@p")
             ])
             p.add_tools(hover)
+            # add highlight to interesting regions
+            box_lt = BoxAnnotation(plot=p, bottom=pvalue_highlight, right=(ratio_highlight * -1), fill_alpha=0.1, fill_color='red')
+            box_rt = BoxAnnotation(plot=p, bottom=pvalue_highlight, left=ratio_highlight, fill_alpha=0.1, fill_color='green')
+            p.renderers.extend([box_lt, box_rt])
+
             palette_key = 0
             for class_name, source in data.items():
                 p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
                         source = source)
                 palette_key += 1
-            box = BoxAnnotation(plot=p, top=2, bottom=0, right=2, left=-2,
-                    fill_alpha=0.1, fill_color='black')
-            p.renderers.extend([box])
             p.legend.click_policy = 'hide'
             p.output_backend = 'svg'
             vol_file = 'volcano_' + ratio_name
