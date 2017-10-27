@@ -204,7 +204,10 @@ class LipidAnalysis:
                 if include_row:
                     row['avg_blank'] = avg_blank
                     subtracted[name] = row
+                    for col in blank_cols:
+                        del(row[col])
             self.rows = subtracted
+            self.groups = self.get_groups()
 
     def calculate_avg_blank(self, blank_cols, row):
             blank_vals = []
