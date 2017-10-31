@@ -680,6 +680,9 @@ class LipidAnalysis:
             dividend_list = self.list_col_type(row, self.area_start + group1)
             divisor_list = self.list_col_type(row, self.area_start + group2)
             t, p = ttest_ind(dividend_list, divisor_list, equal_var = False)
+            # TODO: what to do when all zeros
+            if isnan(p):
+                p = 1
             self.rows[key]['p_value[' + ratio_name + ']'] = p
             self.rows[key]['log_p_value[' + ratio_name + ']'] = numpy.log10(p) * -1
         return ratio_name
