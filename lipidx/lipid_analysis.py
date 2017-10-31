@@ -448,9 +448,9 @@ class LipidAnalysis:
                 class_name = self.class_keys[subclass_key]['class']
                 # populate new subclasses and classes
                 if subclass_name not in subclass_stats:
-                    subclass_stats[subclass_name] = {}
+                    subclass_stats[subclass_name] = OrderedDict()
                     if class_name not in class_stats:
-                        class_stats[class_name] = {}
+                        class_stats[class_name] = OrderedDict()
                 # add row to group areas for the class and subclass that
                 # correspond to the row
                 subclass_stats[subclass_name] = self.group_areas(row,
