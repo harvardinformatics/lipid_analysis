@@ -129,7 +129,6 @@ class LipidAnalysis:
                     cols = set(cols).intersection(row_cols)
                     for key, row in rows.items():
                         rows[key] = self.limit_row_cols(cols, row)
-
         return rows
 
     def limit_row_cols(self, cols, row):
@@ -378,7 +377,6 @@ class LipidAnalysis:
                                 if self.debug:
                                     normal[name][col + 'old'] = row[col]
                                     normal[name][col + 'div'] = intensities[sam]
-                                # TODO: 8 dec place
                                 normal[name][col] = round(float(row[col])/intensities[sam],
                                 self.POST_NORMAL_ROUND)
                 normal = self.recalc_avg(normal)
@@ -428,9 +426,10 @@ class LipidAnalysis:
                 for num in nums: # num replicates per group
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
+            # TODO: recalc col names
             for group, val_lst in stats.items():
-                normal[name]['groupavg[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
-                normal[name]['grouprsd[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
+                normal[name]['grouparea[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
+                normal[name]['arearsd[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
         return normal
 
     def calc_class_stats(self):
