@@ -14,7 +14,7 @@ import logging
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
 from bokeh.models import (HoverTool, ColumnDataSource, Whisker, Range1d,
-    BoxAnnotation)
+    BoxAnnotation, Legend)
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
@@ -352,6 +352,7 @@ class LipidAnalysis:
         # or input manual values
         if self.rows:
             normal = self.rows
+            #TODO: comma to seperate sample values in input S1-1 S1-2 etc
             if form_data['normalize'] != 'none':
                 area_cols = self.get_cols(self.area_start)
                 # use manual values
@@ -372,11 +373,7 @@ class LipidAnalysis:
                     for name, row in normal.items():
                         for col in area_cols:
                             sam = self.get_sample_from_col(col)
-                            # TODO: error case if no intensity?
                             if intensities[sam] > 0:
-                                if self.debug:
-                                    normal[name][col + 'old'] = row[col]
-                                    normal[name][col + 'div'] = intensities[sam]
                                 normal[name][col] = round(float(row[col])/intensities[sam],
                                 self.POST_NORMAL_ROUND)
                 normal = self.recalc_avg(normal)
@@ -426,7 +423,6 @@ class LipidAnalysis:
                 for num in nums: # num replicates per group
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
-            # TODO: recalc col names
             for group, val_lst in stats.items():
                 normal[name]['grouparea[' + group + ']'] = round(numpy.mean(val_lst), self.POST_NORMAL_ROUND)
                 normal[name]['arearsd[' + group + ']'] = round(numpy.std(val_lst), self.POST_NORMAL_ROUND)
@@ -653,8 +649,16 @@ class LipidAnalysis:
             bar.vbar(x = d[x], width = 0.5, top = d[y], legend
                     = group, color = d3['Category10'][self.MAX_GROUPS][palette_key])
             palette_key += 1
+        # TODO: clear all somehow and select all
         bar.legend.click_policy = 'hide'
         bar.output_backend = 'svg'
+        # save the png for the zip file
+        chart_file_png = 'class_chart_' + title.replace(' ', '_').replace(',',
+        '').lower() + '.png'
+        chart_path_png = self.root_path + chart_file_png
+        export_png(bar, filename=chart_path_png)
+        # save paths to zip
+        self.paths_to_zip[chart_file_png] = chart_path_png
         return bar
 
     def calc_ratio(self, group1, group2):
@@ -678,10 +682,11 @@ class LipidAnalysis:
             self.rows[key]['log_ratio[' + ratio_name + ']'] = numpy.log2(ratio)
             dividend_list = self.list_col_type(row, self.area_start + group1)
             divisor_list = self.list_col_type(row, self.area_start + group2)
-            t, p = ttest_ind(dividend_list, divisor_list, equal_var = False)
-            # TODO: what to do when all zeros
-            if isnan(p):
+            # if both lists are zero there is no significance so set to 1
+            if (numpy.sum(divisor_list) + numpy.sum(dividend_list)) == 0.0:
                 p = 1
+            else: # perform ttest to get p_value
+                t, p = ttest_ind(dividend_list, divisor_list, equal_var = False)
             self.rows[key]['p_value[' + ratio_name + ']'] = p
             self.rows[key]['log_p_value[' + ratio_name + ']'] = numpy.log10(p) * -1
         return ratio_name
@@ -735,7 +740,7 @@ class LipidAnalysis:
                 data[class_name]['p'].append(row['log_p_value[' + ratio_name +
                 ']'])
                 y_range.append(row['log_p_value[' + ratio_name + ']'])
-            p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 800, height = 800, toolbar_location = "above")
+            p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 1000, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid"),
                 ('ratio', "@log2"),
@@ -748,11 +753,17 @@ class LipidAnalysis:
             p.renderers.extend([box_lt, box_rt])
 
             palette_key = 0
+            legend_items = []
             for class_name, source in data.items():
-                p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], legend=class_name, alpha=0.5,
-                        source = source)
+                class_points = p.circle('log2', 'p', size=10, color=d3['Category20'][self.MAX_CLASSES][palette_key], alpha=0.5, source = source)
+                legend_items.append((class_name, [class_points]))
                 palette_key += 1
-            p.legend.click_policy = 'hide'
+            legend = Legend(
+                    items = legend_items,
+                    click_policy = 'hide',
+                    location = (0, -30)
+            )
+            p.add_layout(legend, 'right')
             p.output_backend = 'svg'
             vol_file = 'volcano_' + ratio_name
             vol_file_svg = vol_file + '.svg'
