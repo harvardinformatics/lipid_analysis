@@ -363,10 +363,13 @@ class LipidAnalysis:
                             form_name = 'normal_' + group
                             # TODO: what if they don't fill it out
                             if form_data[form_name]:
-                                if self.debug: # put old values in rows to debug
-                                    normal[name][col + 'old'] = row[col]
-                                    normal[name][col + 'div'] = float(form_data[form_name])
-                                normal[name][col] = round(row[col] / float(form_data[form_name]), self.POST_NORMAL_ROUND)
+                                # form field is comma separated values for each
+                                # numeric sample
+                                val = form_data[form_name].split(',')
+                                num = int(num)
+                                if num < len(val):
+                                    val = val[num].strip()
+                                    normal[name][col] = round(float(row[col]) / float(val), self.POST_NORMAL_ROUND)
                 # use calculated intensity
                 elif form_data['normalize'] == 'intensity':
                     intensities = self.calc_intensities(area_cols)

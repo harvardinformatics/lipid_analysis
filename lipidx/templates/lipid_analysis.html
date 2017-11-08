@@ -38,6 +38,8 @@
         <legend>Normalization (optional)</legend>
             {{ form.normalize(class = 'normalize') }}
             <div class='normal_values'>
+                For each group enter comma seperated values for the samples in
+                numeric order<br>
                 {{ macros.render_field(form.normal_c) }}
                 {{ macros.render_field(form.normal_s1) }}
                 {{ macros.render_field(form.normal_s2) }}
