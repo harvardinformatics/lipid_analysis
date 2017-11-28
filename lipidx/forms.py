@@ -85,3 +85,8 @@ class VolcanoForm(FlaskForm):
     ratio_highlight = FloatField('Hightlight greater than or less than ratio', default =
             RATIO_HIGHLIGHT_DEFAULT)
     pvalue_highlight = FloatField('Hightlight pvalue above', default = PVALUE_HIGHLIGHT_DEFAULT)
+
+class PCAForm(FlaskForm):
+    #TODO: factor out the common form bits
+    file_msg = 'Must submit a file to process'
+    file1 = FileField('File 1', [FileRequired()])
