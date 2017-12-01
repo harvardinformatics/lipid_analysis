@@ -616,7 +616,7 @@ class LipidAnalysis:
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area',
         'sum of area per group', data['lipid'], data['sum'], 'std')
         bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Area, log', 'sum of area per group', data['lipid'], data['log_sum'], 'log_std')
-        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area', data['lipid'], data['relative'])
+        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area %', data['lipid'], data['relative'])
         bar_log_relative = self.bar_chart(gr_data, data, 'x', 'log_relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['log_relative'], None, True)
 
         bars = gridplot(
