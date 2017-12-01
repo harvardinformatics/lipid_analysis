@@ -6,10 +6,12 @@ from lipidx import app
 import logging
 import sys, os
 from bokeh.plotting import figure, output_file, show
-from bokeh.models import HoverTool, Whisker, ColumnDataSource, Span, Range1d
+from bokeh.models import (HoverTool, Whisker, ColumnDataSource, Span, Range1d,
+        Legend)
 from bokeh.embed import components
 from bokeh.palettes import d3
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import numpy
 
 @app.route('/lipid_analysis/', methods=['GET', 'POST'])
@@ -82,7 +84,7 @@ def pca():
         file1.save(root_path + 'pca_file.txt')
         #path = '/Users/portermahoney/sites/lipidx_dev/lipidx/lipidx/files/compounds_mc.csv'
         path = root_path + 'pca_file.txt'
-        samples = []
+        sample_grps = {}
         names = []
         data = []
         with open(path,'r') as f:
@@ -90,12 +92,23 @@ def pca():
                 row = ln.split(',')
                 if 'name' in ln:
                     samples = [x.replace('/n', '') for x in row[1:]]
+                    for i, s in enumerate(samples):
+                        prefix = s.split('_')[0]
+                        if prefix not in sample_grps:
+                            sample_grps[prefix] = []
+                        sample_grps[prefix].append(i)
                 else:
                     names.append(row[0])
                     data.append([float(x.replace('/n', '')) for x in row[1:]])
         cnt = len(data[0])
         pca = PCA(n_components=2)
-        pca.fit(data)
+        #pca.fit(data)
+        # what is scale - changes numbers to be close to one or 2 not extremes,
+        # with std
+        # what is centering -
+        # try with R for comparison
+        x_std = StandardScaler().fit_transform(data)
+        pca.fit_transform(x_std)
         print(pca)
         print(pca.components_)
         print(pca.explained_variance_ratio_)
@@ -106,12 +119,24 @@ def pca():
                     100)),
                 y_axis_label = ('pc2: %.2f%%' % (pca.explained_variance_ratio_[1] *
                     100)),
-                width = 1000, height = 800, toolbar_location = "above"
+                width = 800, height = 800, toolbar_location = "above"
         )
-        class_points = p.circle(pca.components_[0][0:4], pca.components_[1][0:4], size=10, color=d3['Category20'][20][1])
-        #legend_items.append((class_name, [class_points]))
-        class_points = p.circle(pca.components_[0][4:8], pca.components_[1][4:8], size=10, color=d3['Category20'][20][2])
-        class_points = p.circle(pca.components_[0][8:], pca.components_[1][8:], size=10, color=d3['Category20'][20][3])
+        legend_items = []
+        palette_key = 1
+        for grp, indexes in sample_grps.items():
+            pc_1 = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
+            pc_2 = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
+            print(pc_1)
+            print(pc_2)
+            class_points = p.circle(pc_1, pc_2, size=10, color=d3['Category20'][20][palette_key])
+            palette_key += 1
+            legend_items.append((grp, [class_points]))
+        legend = Legend(
+                items = legend_items,
+                click_policy = 'hide',
+                location = (0, -30)
+        )
+        p.add_layout(legend, 'right')
         context = {}
         context['pca_script'], context['pca_div'] = components(p)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
