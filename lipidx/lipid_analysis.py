@@ -13,8 +13,8 @@ from lipidx.forms import LipidAnalysisForm
 import logging
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, show
-from bokeh.models import (HoverTool, ColumnDataSource, Whisker, Range1d,
-    BoxAnnotation, Legend)
+from bokeh.models import (HoverTool, ColumnDataSource, Whisker, DataRange1d,
+    Range1d, BoxAnnotation, Legend)
 from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
@@ -541,6 +541,7 @@ class LipidAnalysis:
     def class_plot(self):
         # reorganize class_stats data for plotting
         # TODO: can we avoid the need for this regoranization?
+        # TODO: remove log stats once we're happy with the log access
         data = {
                 'lipid': [],
                 'cnt': [],
@@ -555,6 +556,7 @@ class LipidAnalysis:
                 'log_relative': []
         }
         x = 1
+        # TODO: FactorRange for groups lipid axis
         gr_data = OrderedDict()
         group_list = []
         for lipid_class, groups in self.class_stats.items():
@@ -615,9 +617,9 @@ class LipidAnalysis:
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area',
         'sum of area per group', data['lipid'], data['sum'], 'std')
-        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'log_sum', 'Area, log', 'sum of area per group', data['lipid'], data['log_sum'], 'log_std')
+        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area, log', 'sum of area per group', data['lipid'], data['sum'], 'std', None, 'log')
         bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area %', data['lipid'], data['relative'])
-        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'log_relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['log_relative'], None, True)
+        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['relative'], None, None, 'log')
 
         bars = gridplot(
                 [bar_cnt],
@@ -629,15 +631,32 @@ class LipidAnalysis:
         script, div = components(bars)
         return script, div
 
-    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = False):
+    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_reverse = None, y_axis_type = None):
         if y_reverse:
             top = min(y_range)
         else:
             top = max(y_range)
+        if y_axis_type:
+            bottom = 0.0000000001
+            #top = numpy.log10(top)
+            #per = numpy.log10(top) * 0.1
+            #top = top + (numpy.pow(top)
+        else:
+            bottom = 0
+            top = top + top * 0.1
+            y_axis_type = 'auto'
+
+        # TODO: figure out how to get vbars to sit at bottom
         # set y_range starting from 0 with 10% space at top
-        range_d = Range1d(0, top + top * .1)
+        #range_d = Range1d(bottom, top)
+        #range_d = DataRange1d(bottom, top)
+        #range_d = Range1d()
+        #range_d.end = bottom
+        #range_d.range_padding_units = 'percent'
+        #range_d.range_padding = 10
         bar = figure(title=title, y_axis_label = y_label,
-                x_range = x_range, y_range = range_d, width = 1500)
+                x_range = x_range, width = 1500, y_axis_type
+                = y_axis_type)
         bar.xaxis.major_label_orientation = pi/4
 
         if std:
@@ -649,7 +668,7 @@ class LipidAnalysis:
                 lower='lower', level='annotation'))
         palette_key = 0
         for group, d in gr_data.items():
-            bar.vbar(x = d[x], width = 0.5, top = d[y], legend
+            bar.vbar(x = d[x], width = 0.5, top = d[y], bottom = bottom, legend
                     = group, color = d3['Category10'][self.MAX_GROUPS][palette_key])
             palette_key += 1
         # TODO: clear all somehow and select all
