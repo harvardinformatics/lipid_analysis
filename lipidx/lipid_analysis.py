@@ -493,10 +493,8 @@ class LipidAnalysis:
                 stats[name][group]['sum'] = gr_sum
                 stats[name][group]['avg'] = avg
                 std = numpy.std(info['grp_areas'])
-                #log_std = numpy.std(info['log_grp_areas'])
                 row[group + ' std'] = std
                 stats[name][group]['std'] = std
-                #stats[name][group]['log_std'] = log_std
             rows[name] = row
         return stats, rows
 
@@ -505,24 +503,14 @@ class LipidAnalysis:
         for key in self.groups.keys():
             if key not in grp_info:
                 # keep cnt and a list of group areas for group
-                grp_info[key] = {'cnt': 0, 'grp_areas': [],
-                        #'log_grp_areas': []
-                }
+                grp_info[key] = {'cnt': 0, 'grp_areas': []}
             areas = self.list_col_type(row, self.area_start + key)
-            '''for a in areas:
-                # use 0.0 as the log if the area is 0.0 this will show there's
-                # nothing in the subclass/group
-                log = 0.0
-                if a > 0.0:
-                    log = numpy.log10(a)
-                log_areas.append(log)'''
             if max(areas) > 0.0:
                 grp_info[key]['cnt'] += 1
-            # append one area and log area per row group because there will be
+            # append one area per row group because there will be
             # multiple rows in a subclass
             # later another average is taken across all rows in the subclass
             grp_info[key]['grp_areas'].append(numpy.mean(areas))
-            #grp_info[key]['log_grp_areas'].append(numpy.mean(log_areas))
         return grp_info
 
     def load_lipid_classes(self):
@@ -542,19 +530,15 @@ class LipidAnalysis:
     def class_plot(self):
         # reorganize class_stats data for plotting
         # TODO: can we avoid the need for this regoranization?
-        # TODO: remove log stats once we're happy with the log access
         data = {
                 'lipid': [],
                 'cnt': [],
                 'sum': [],
-                #'log_sum': [],
                 'std': [],
-                #'log_std': [],
                 'x': [],
                 'lower': [],
                 'upper': [],
                 'relative': [],
-                #'log_relative': []
         }
         x = 1
         # TODO: FactorRange for groups lipid axis
@@ -569,27 +553,18 @@ class LipidAnalysis:
                     gr_data[group] = {
                             'cnt': [],
                             'sum': [],
-                            #'log_sum': [],
                             'x': [],
                             'relative':[],
-                            #'log_relative':[]
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
                 gr_data[group]['sum'].append(stats['sum'])
-                # don't try to take log of 0
-                '''log = 0.0
-                if stats['sum'] > 1.0:
-                    log = numpy.log10(stats['sum'])
-                gr_data[group]['log_sum'].append(log)'''
                 gr_data[group]['x'].append(x)
 
                 # lists of the data not organized by group used in plotting
                 data['lipid'].append(lipid_class)
                 data['cnt'].append(stats['cnt'])
                 data['sum'].append(stats['sum'])
-                #data['log_sum'].append(log)
                 data['std'].append(stats['std'])
-                #data['log_std'].append(stats['log_std'])
                 data['lower'].append(stats['sum'] - stats['std'])
                 data['upper'].append(stats['sum'] + stats['std'])
                 data['x'].append(x)
@@ -609,13 +584,6 @@ class LipidAnalysis:
                 relative_percent = relative * 100
                 gr_data[group]['relative'].append(relative_percent)
                 data['relative'].append(relative_percent)
-                # prevent taking the log of 0
-                '''log_relative = 0.0
-                if relative > 0.0:
-                    log_relative = numpy.log10(relative)
-                gr_data[group]['log_relative'].append(log_relative)
-                data['log_relative'].append(log_relative)
-                '''
         bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area', 'sum of area per group', data['lipid'], data['sum'], 'std')
         bar_log_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area, log', 'sum of area per group', data['lipid'], data['sum'], 'std', 'log')
