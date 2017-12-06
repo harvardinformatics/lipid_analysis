@@ -19,6 +19,7 @@ from bokeh.embed import components
 from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
 from bokeh.io import export_svgs, export_png
+from multiprocessing import Pool
 
 class LipidAnalysis:
     MAX_GROUPS = 10
@@ -572,7 +573,6 @@ class LipidAnalysis:
             # put space between lipid groups
             data['lipid'].append(lipid_class)
             x += 1
-
         # get relative sums
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
@@ -584,12 +584,13 @@ class LipidAnalysis:
                 relative_percent = relative * 100
                 gr_data[group]['relative'].append(relative_percent)
                 data['relative'].append(relative_percent)
-        bar_cnt = self.bar_chart(gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
-        bar_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area', 'sum of area per group', data['lipid'], data['sum'], 'std')
-        bar_log_sum = self.bar_chart(gr_data, data, 'x', 'sum', 'Area, log', 'sum of area per group', data['lipid'], data['sum'], 'std', 'log')
-        bar_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area %', data['lipid'], data['relative'])
-        bar_log_relative = self.bar_chart(gr_data, data, 'x', 'relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['relative'], None, 'log')
-
+        pool = Pool(2)
+        bar_cnt = self.bar_chart(pool, gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
+        bar_sum = self.bar_chart(pool, gr_data, data, 'x', 'sum', 'Area', 'sum of area per group', data['lipid'], data['sum'], 'std')
+        bar_log_sum = self.bar_chart(pool, gr_data, data, 'x', 'sum', 'Area, log', 'sum of area per group', data['lipid'], data['sum'], 'std', 'log')
+        bar_relative = self.bar_chart(pool, gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area %', data['lipid'], data['relative'])
+        bar_log_relative = self.bar_chart(pool, gr_data, data, 'x', 'relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['relative'], None, 'log')
+        pool.close()
         bars = gridplot(
                 [bar_cnt],
                 [bar_sum],
@@ -600,7 +601,7 @@ class LipidAnalysis:
         script, div = components(bars)
         return script, div
 
-    def bar_chart(self, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_axis_type = None):
+    def bar_chart(self, pool, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_axis_type = None):
         if y_axis_type:
             bottom = 0.0000000001
         else:
@@ -612,7 +613,6 @@ class LipidAnalysis:
                 = y_axis_type)
         bar.y_range.start = bottom
         bar.xaxis.major_label_orientation = pi/4
-
         if std:
             base = data[x]
             upper = [u + data[std][i] for i, u in enumerate(data[y])]
@@ -632,7 +632,7 @@ class LipidAnalysis:
         chart_file_png = 'class_chart_' + title.replace(' ', '_').replace(',',
         '').lower() + '.png'
         chart_path_png = self.root_path + chart_file_png
-        export_png(bar, filename=chart_path_png)
+        pool.apply_async(export_png, (bar,), {'filename':chart_path_png})
         # save paths to zip
         self.paths_to_zip[chart_file_png] = chart_path_png
         return bar
