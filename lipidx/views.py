@@ -5,6 +5,7 @@ from lipidx import forms
 from lipidx import app
 import logging
 import sys, os
+import time
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import HoverTool, Whisker, ColumnDataSource, Span, Range1d
 from bokeh.embed import components
@@ -28,23 +29,52 @@ def lipid_analysis():
         file2.save(root_path + 'file2.txt')
         file1_path = root_path + 'file1.txt'
         file2_path = root_path + 'file2.txt'
-
+        start = time.time()
         la = LipidAnalysis([file1_path, file2_path], debug)
+        curr = time.time()
+        print('LA' + str(start-curr))
         la.remove_rejects()
+        last = curr
+        curr = time.time()
+        print('Remove' + str(last-curr))
         la.group_ions(form.data['group_ions_within'])
+        last = curr
+        curr = time.time()
+        print('Group' + str(last-curr))
         la.filter_rows(form.data['retention_time_filter'],
                 form.data['group_pq_filter'],
                 form.data['group_sn_filter'],
                 form.data['group_area_filter'],
                 form.data['group_height_filter']
         )
+        last = curr
+        curr = time.time()
+        print('Filter' + str(last-curr))
         la.subtract_blank(form.data['blank'], form.data['mult_factor'])
+        last = curr
+        curr = time.time()
+        print('blank' + str(last-curr))
         la.remove_columns(form.data['remove_cols'])
+        last = curr
+        curr = time.time()
+        print('remove cols' + str(last-curr))
         la.normalize(form.data)
+        last = curr
+        curr = time.time()
+        print('normal' + str(last-curr))
         if form.data['class_stats']:
             subclass_stats, class_stats = la.calc_class_stats()
+            last = curr
+            curr = time.time()
+            print('stats' + str(last-curr))
             context['class_script'], context['class_div'] = la.class_plot()
+            last = curr
+            curr = time.time()
+            print('bars' + str(last-curr))
         context['volcano_script'], context['volcano_div'] = la.volcano_plot(form.data)
+        last = curr
+        curr = time.time()
+        print('volcano' + str(last-curr))
         zip_path = la.write_results()
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
