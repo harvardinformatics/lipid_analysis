@@ -23,6 +23,9 @@
         <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
             target="_blank">Download Lipid Analysis File</a>
     {% endif %}
+    {% if input_div %}
+        {{input_div|safe}}
+    {% endif %}
     {% if pca_div %}
         {{pca_div|safe}}
     {% endif %}
@@ -32,6 +35,9 @@
     {{ super() }}
     <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
     <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    {% if input_script %}
+        {{input_script|safe}}
+    {% endif %}
     {% if pca_script %}
         {{pca_script|safe}}
     {% endif %}

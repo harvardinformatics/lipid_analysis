@@ -72,6 +72,36 @@ def volcano():
         zip_path = la.write_results()
     return render_template('volcano.html', form=form, zip_path=zip_path, **context)
 
+@app.route('/pca_test/', methods=['GET', 'POST'])
+def pca_test():
+    context = {}
+    form_data = request.form
+    form = forms.PCAForm()
+    zip_path = None
+    rng = numpy.random.RandomState(1)
+    data = numpy.dot(rng.rand(2,2), rng.randn(2,20)).T
+    p = figure(
+            title = 'input test',
+            x_axis_label = ('y'),
+            y_axis_label = ('x'),
+            width = 800, height = 800, toolbar_location = "above"
+    )
+    p.circle(data[:, 0], data[:, 1], size=10)
+    context['input_script'], context['input_div'] = components(p)
+    pca = PCA(n_components=2)
+    data_pca = pca.fit_transform(data)
+    p = figure(
+            title = 'pca test',
+            x_axis_label = ('pc1: %.2f%%' % (pca.explained_variance_ratio_[0] *
+                100)),
+            y_axis_label = ('pc2: %.2f%%' % (pca.explained_variance_ratio_[1] *
+                100)),
+            width = 800, height = 800, toolbar_location = "above"
+    )
+    p.circle(data_pca[:, 0], data_pca[:, 1], size=10)
+    context['pca_script'], context['pca_div'] = components(p)
+    return render_template('pca.html', form=form, zip_path=zip_path, **context)
+
 @app.route('/pca/', methods=['GET', 'POST'])
 def pca():
     form_data = request.form
@@ -101,14 +131,25 @@ def pca():
                     names.append(row[0])
                     data.append([float(x.replace('/n', '')) for x in row[1:]])
         cnt = len(data[0])
+        print(data)
+        #data = numpy.matrix.transpose(numpy.array(data))
+        p = figure(
+                title = 'pca input',
+                x_axis_label = ('y'),
+                y_axis_label = ('x'),
+                width = 800, height = 800, toolbar_location = "above"
+        )
+        #p.circle(data[:, 0], data[:, 1], size=10)
+        #context['input_script'], context['input_div'] = components(p)
         pca = PCA(n_components=2)
         #pca.fit(data)
         # what is scale - changes numbers to be close to one or 2 not extremes,
         # with std
         # what is centering -
         # try with R for comparison
-        x_std = StandardScaler().fit_transform(data)
-        pca.fit_transform(x_std)
+        std_data = StandardScaler().fit_transform(data)
+        data_pca = pca.fit_transform(data)
+        #data_pca = pca.inverse_transform(data_pca)
         print(pca)
         print(pca.components_)
         print(pca.explained_variance_ratio_)
@@ -123,11 +164,10 @@ def pca():
         )
         legend_items = []
         palette_key = 1
+        #p.circle(pca.components_[0], pca.components_[1], size=10)
         for grp, indexes in sample_grps.items():
             pc_1 = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
             pc_2 = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
-            print(pc_1)
-            print(pc_2)
             class_points = p.circle(pc_1, pc_2, size=10, color=d3['Category20'][20][palette_key])
             palette_key += 1
             legend_items.append((grp, [class_points]))
