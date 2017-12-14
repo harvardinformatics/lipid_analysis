@@ -112,7 +112,6 @@ def pca():
         root_path = app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'pca_file.txt')
-        #path = '/Users/portermahoney/sites/lipidx_dev/lipidx/lipidx/files/compounds_mc.csv'
         path = root_path + 'pca_file.txt'
         sample_grps = {}
         names = []
@@ -131,29 +130,11 @@ def pca():
                     names.append(row[0])
                     data.append([float(x.replace('/n', '')) for x in row[1:]])
         cnt = len(data[0])
-        print(data)
-        #data = numpy.matrix.transpose(numpy.array(data))
-        p = figure(
-                title = 'pca input',
-                x_axis_label = ('y'),
-                y_axis_label = ('x'),
-                width = 800, height = 800, toolbar_location = "above"
-        )
-        #p.circle(data[:, 0], data[:, 1], size=10)
-        #context['input_script'], context['input_div'] = components(p)
         pca = PCA(n_components=2)
-        #pca.fit(data)
-        # what is scale - changes numbers to be close to one or 2 not extremes,
-        # with std
-        # what is centering -
-        # try with R for comparison
+        # scale and center the data (though it seems fit_transform centers when
+        # used alone)
         std_data = StandardScaler().fit_transform(data)
-        data_pca = pca.fit_transform(data)
-        #data_pca = pca.inverse_transform(data_pca)
-        print(pca)
-        print(pca.components_)
-        print(pca.explained_variance_ratio_)
-        print(samples)
+        data_pca = pca.fit_transform(std_data)
         p = figure(
                 title = 'pca ploti',
                 x_axis_label = ('pc1: %.2f%%' % (pca.explained_variance_ratio_[0] *
@@ -164,7 +145,6 @@ def pca():
         )
         legend_items = []
         palette_key = 1
-        #p.circle(pca.components_[0], pca.components_[1], size=10)
         for grp, indexes in sample_grps.items():
             pc_1 = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
             pc_2 = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
