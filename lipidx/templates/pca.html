@@ -15,6 +15,10 @@
         <fieldset>
         <legend>Lipid analysis results file</legend>
             {{ macros.render_field(form.file1) }}
+            <a href="{{url_for('file', filename = 'pca_template.csv')}}"
+                target="_blank">Download example input file</a>
+            <p>Add as many groups as needed, the example contains 2 groups with 2
+            samples each.</p>
         </fieldset>
         <br>
         <input id="submit" name="submit" type="submit" value="Submit">
