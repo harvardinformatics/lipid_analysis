@@ -6,3 +6,5 @@ lipidx/__pycache__/*
 config.py
 *.log
 .DS_Store
+lipidx/static/bokeh-*
+*.bk
