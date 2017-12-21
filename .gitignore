@@ -1,4 +1,5 @@
 lipidx/files/*
+!lipidx/files/pca_template.csv
 !lipidx/files/README.md
 lipidx/__pycache__/*
 *.pyc
