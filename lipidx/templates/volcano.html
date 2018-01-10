@@ -3,14 +3,14 @@
 {%- block styles %}
     {{ super() }}
     <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='bokeh-0.12.6.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bokeh.min.css') }}" rel="stylesheet">
 {% endblock %}
 {% block content_title %}
 <h1>Volcano Ploti</h1>
-<p>Use results from <a href="{{url_for('lipid_analysis')}}">lipid analysis</a></p>
+<p>Use results from <a href="{{url_for('lipidx.lipid_analysis')}}">lipid analysis</a></p>
 {%- endblock content_title %}
 {% block page_content %}
-    <form action="{{ url_for('volcano') }}" method="POST" name="volcano_form" class="form_table" enctype="multipart/form-data">
+    <form action="{{ url_for('lipidx.volcano') }}" method="POST" name="volcano_form" class="form_table" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         <fieldset>
         <legend>Lipid analysis results file</legend>
@@ -29,7 +29,7 @@
         <input id="submit" name="submit" type="submit" value="Submit">
     </form>
     {% if zip_path %}
-        <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
+        <a href="{{url_for('lipidx.file', filename = 'lipid_results.zip')}}"
             target="_blank">Download Lipid Analysis File</a>
     {% endif %}
     {% if volcano_div %}
@@ -40,7 +40,7 @@
 {% block scripts %}
     {{ super() }}
     <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
-    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh.min.js' ) }}"></script>
     {% if volcano_script %}
         {{volcano_script|safe}}
     {% endif %}

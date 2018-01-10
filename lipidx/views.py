@@ -1,8 +1,7 @@
 from flask import (request, current_app, render_template,
-    send_from_directory)
+    send_from_directory, Blueprint)
 from lipidx.lipid_analysis import LipidAnalysis
 from lipidx import forms
-from lipidx import app
 import logging
 import sys, os
 import time
@@ -14,9 +13,10 @@ from bokeh.palettes import d3
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import numpy
-from flask import url_for
 
-@app.route('/lipid_analysis/', methods=['GET', 'POST'])
+lipidx_bp = Blueprint('lipidx', __name__)
+
+@lipidx_bp.route('/lipid_analysis/', methods=['GET', 'POST'])
 def lipid_analysis():
     form_data = request.form
     form = forms.LipidAnalysisForm()
@@ -28,7 +28,7 @@ def lipid_analysis():
     if debug:
         context['params'] = {'debug': True}
     if form.validate_on_submit():
-        root_path = app.config['UPLOAD_FOLDER']
+        root_path = current_app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'file1.txt')
         file2 = request.files[form.file2.name]
@@ -84,7 +84,7 @@ def lipid_analysis():
         zip_path = la.write_results()
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
-@app.route('/volcano/', methods=['GET', 'POST'])
+@lipidx_bp.route('/volcano/', methods=['GET', 'POST'])
 def volcano():
     form_data = request.form
     form = forms.VolcanoForm()
@@ -93,7 +93,7 @@ def volcano():
     div = None
     context = {}
     if form.validate_on_submit():
-        root_path = app.config['UPLOAD_FOLDER']
+        root_path = current_app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'file1.txt')
         file1_path = root_path + 'file1.txt'
@@ -103,7 +103,7 @@ def volcano():
         zip_path = la.write_results()
     return render_template('volcano.html', form=form, zip_path=zip_path, **context)
 
-@app.route('/pca_test/', methods=['GET', 'POST'])
+@lipidx_bp.route('/pca_test/', methods=['GET', 'POST'])
 def pca_test():
     context = {}
     form_data = request.form
@@ -133,14 +133,14 @@ def pca_test():
     context['pca_script'], context['pca_div'] = components(p)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
 
-@app.route('/pca/', methods=['GET', 'POST'])
+@lipidx_bp.route('/pca/', methods=['GET', 'POST'])
 def pca():
     form_data = request.form
     form = forms.PCAForm()
     zip_path = None
     context = {}
     if form.validate_on_submit():
-        root_path = app.config['UPLOAD_FOLDER']
+        root_path = current_app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'pca_file.txt')
         path = root_path + 'pca_file.txt'
@@ -192,9 +192,9 @@ def pca():
         context['pca_script'], context['pca_div'] = components(p)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
 
-@app.route('/file/<filename>')
+@lipidx_bp.route('/file/<filename>')
 def file(filename):
-    file_dir = app.config['UPLOAD_FOLDER']
+    file_dir = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(file_dir, filename)
 
 

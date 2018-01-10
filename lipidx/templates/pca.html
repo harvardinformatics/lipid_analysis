@@ -3,19 +3,19 @@
 {%- block styles %}
     {{ super() }}
     <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='bokeh-0.12.6.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bokeh.min.css') }}" rel="stylesheet">
 {% endblock %}
 {% block content_title %}
 <h1>Principal Component Ploti</h1>
-<p>Use results from <a href="{{url_for('lipid_analysis')}}">lipid analysis</a></p>
+<p>Use results from <a href="{{url_for('lipidx.lipid_analysis')}}">lipid analysis</a></p>
 {%- endblock content_title %}
 {% block page_content %}
-    <form action="{{ url_for('pca') }}" method="POST" name="volcano_form" class="form_table" enctype="multipart/form-data">
+    <form action="{{ url_for('lipidx.pca') }}" method="POST" name="volcano_form" class="form_table" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         <fieldset>
         <legend>Lipid analysis results file</legend>
             {{ macros.render_field(form.file1) }}
-            <a href="{{url_for('file', filename = 'pca_template.csv')}}"
+            <a href="{{url_for('lipidx.file', filename = 'pca_template.csv')}}"
                 target="_blank">Download example input file</a>
             <p>Add as many groups as needed, the example contains 2 groups with 2
             samples each.</p>
@@ -24,7 +24,7 @@
         <input id="submit" name="submit" type="submit" value="Submit">
     </form>
     {% if zip_path %}
-        <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
+        <a href="{{url_for('lipidx.file', filename = 'lipid_results.zip')}}"
             target="_blank">Download Lipid Analysis File</a>
     {% endif %}
     {% if input_div %}
@@ -38,7 +38,7 @@
 {% block scripts %}
     {{ super() }}
     <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
-    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh-0.12.6.min.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh.min.js' ) }}"></script>
     {% if input_script %}
         {{input_script|safe}}
     {% endif %}

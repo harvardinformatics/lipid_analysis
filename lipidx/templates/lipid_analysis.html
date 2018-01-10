@@ -9,7 +9,7 @@
     <h1>Lipid Analysis</h1>
 {%- endblock content_title %}
 {% block page_content %}
-    <form action="{{ url_for('lipid_analysis', **params) }}" method="POST" name="lipid_analysis_form" class="form_table" enctype="multipart/form-data">
+    <form action="{{ url_for('lipidx.lipid_analysis', **params) }}" method="POST" name="lipid_analysis_form" class="form_table" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         <fieldset>
         <legend>Merge results files</legend>
@@ -70,7 +70,7 @@
         <input id="submit" name="submit" type="submit" value="Submit">
     </form>
     {% if zip_path %}
-        <a href="{{url_for('file', filename = 'lipid_results.zip')}}"
+        <a href="{{url_for('lipidx.file', filename = 'lipid_results.zip')}}"
             target="_blank">Download Lipid Analysis File</a>
         {% endif %}
     {% if class_div %}
