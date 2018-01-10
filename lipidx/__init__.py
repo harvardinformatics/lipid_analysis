@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap
-import config
+from lipidx import config
 import logging
 import sys, os
 
