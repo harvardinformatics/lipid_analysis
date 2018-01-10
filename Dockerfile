@@ -1,4 +1,5 @@
 FROM continuumio/miniconda3
+EXPOSE 5000
 RUN conda install -y \
         flask \
         pillow \
@@ -16,6 +17,5 @@ RUN conda install -c \
         conda-forge selenium
 ADD . /code
 WORKDIR /code
-RUN conda create --name lipidx
 ENV PYTHONPATH /code:/code/lipidx
 ENTRYPOINT ["python", "run.py"]
