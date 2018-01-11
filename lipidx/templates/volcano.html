@@ -2,8 +2,8 @@
 {% import "bootstrap/wtf.html" as wtf %}
 {%- block styles %}
     {{ super() }}
-    <link href="{{ url_for('static', filename='lipid.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='bokeh.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('lipidx.static', filename='lipid.css') }}" rel="stylesheet">
+    <link href="{{ url_for('lipidx.static', filename='bokeh.min.css') }}" rel="stylesheet">
 {% endblock %}
 {% block content_title %}
 <h1>Volcano Ploti</h1>
@@ -39,8 +39,8 @@
 
 {% block scripts %}
     {{ super() }}
-    <script type="text/javascript" src="{{ url_for( 'static', filename='lipid.js' ) }}"></script>
-    <script type="text/javascript" src="{{ url_for( 'static', filename='bokeh.min.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'lipidx.static', filename='lipid.js' ) }}"></script>
+    <script type="text/javascript" src="{{ url_for( 'lipidx.static', filename='bokeh.min.js' ) }}"></script>
     {% if volcano_script %}
         {{volcano_script|safe}}
     {% endif %}

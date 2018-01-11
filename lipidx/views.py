@@ -2,27 +2,22 @@ from flask import (request, current_app, render_template,
     send_from_directory, Blueprint)
 from lipidx.lipid_analysis import LipidAnalysis
 from lipidx import forms
-import logging
-import sys, os
 import time
-from bokeh.plotting import figure, output_file, show
-from bokeh.models import (HoverTool, Whisker, ColumnDataSource, Span, Range1d,
-        Legend)
+from bokeh.plotting import figure
+from bokeh.models import Legend
 from bokeh.embed import components
 from bokeh.palettes import d3
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import numpy
 
-lipidx_bp = Blueprint('lipidx', __name__)
+lipidx_bp = Blueprint('lipidx', __name__, static_folder='./static')
+
 
 @lipidx_bp.route('/lipid_analysis/', methods=['GET', 'POST'])
 def lipid_analysis():
-    form_data = request.form
     form = forms.LipidAnalysisForm()
     zip_path = None
-    script = None
-    div = None
     debug = 'debug' in request.args
     context = {'params': {}}
     if debug:
@@ -38,15 +33,15 @@ def lipid_analysis():
         start = time.time()
         la = LipidAnalysis([file1_path, file2_path], debug)
         curr = time.time()
-        print('LA' + str(start-curr))
+        print('LA' + str(start - curr))
         la.remove_rejects()
         last = curr
         curr = time.time()
-        print('Remove' + str(last-curr))
+        print('Remove' + str(last - curr))
         la.group_ions(form.data['group_ions_within'])
         last = curr
         curr = time.time()
-        print('Group' + str(last-curr))
+        print('Group' + str(last - curr))
         la.filter_rows(form.data['retention_time_filter'],
                 form.data['group_pq_filter'],
                 form.data['group_sn_filter'],
@@ -55,42 +50,40 @@ def lipid_analysis():
         )
         last = curr
         curr = time.time()
-        print('Filter' + str(last-curr))
+        print('Filter' + str(last - curr))
         la.subtract_blank(form.data['blank'], form.data['mult_factor'])
         last = curr
         curr = time.time()
-        print('blank' + str(last-curr))
+        print('blank' + str(last - curr))
         la.remove_columns(form.data['remove_cols'])
         last = curr
         curr = time.time()
-        print('remove cols' + str(last-curr))
+        print('remove cols' + str(last - curr))
         la.normalize(form.data)
         last = curr
         curr = time.time()
-        print('normal' + str(last-curr))
+        print('normal' + str(last - curr))
         if form.data['class_stats']:
             subclass_stats, class_stats = la.calc_class_stats()
             last = curr
             curr = time.time()
-            print('stats' + str(last-curr))
+            print('stats' + str(last - curr))
             context['class_script'], context['class_div'] = la.class_plot()
             last = curr
             curr = time.time()
-            print('bars' + str(last-curr))
+            print('bars' + str(last - curr))
         context['volcano_script'], context['volcano_div'] = la.volcano_plot(form.data)
         last = curr
         curr = time.time()
-        print('volcano' + str(last-curr))
+        print('volcano' + str(last - curr))
         zip_path = la.write_results()
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
+
 @lipidx_bp.route('/volcano/', methods=['GET', 'POST'])
 def volcano():
-    form_data = request.form
     form = forms.VolcanoForm()
     zip_path = None
-    script = None
-    div = None
     context = {}
     if form.validate_on_submit():
         root_path = current_app.config['UPLOAD_FOLDER']
@@ -103,19 +96,19 @@ def volcano():
         zip_path = la.write_results()
     return render_template('volcano.html', form=form, zip_path=zip_path, **context)
 
+
 @lipidx_bp.route('/pca_test/', methods=['GET', 'POST'])
 def pca_test():
     context = {}
-    form_data = request.form
     form = forms.PCAForm()
     zip_path = None
     rng = numpy.random.RandomState(1)
-    data = numpy.dot(rng.rand(2,2), rng.randn(2,20)).T
+    data = numpy.dot(rng.rand(2, 2), rng.randn(2, 20)).T
     p = figure(
-            title = 'input test',
-            x_axis_label = ('y'),
-            y_axis_label = ('x'),
-            width = 800, height = 800, toolbar_location = "above"
+            title='input test',
+            x_axis_label=('y'),
+            y_axis_label=('x'),
+            width=800, height=800, toolbar_location="above"
     )
     p.circle(data[:, 0], data[:, 1], size=10)
     context['input_script'], context['input_div'] = components(p)
@@ -133,9 +126,9 @@ def pca_test():
     context['pca_script'], context['pca_div'] = components(p)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
 
+
 @lipidx_bp.route('/pca/', methods=['GET', 'POST'])
 def pca():
-    form_data = request.form
     form = forms.PCAForm()
     zip_path = None
     context = {}
@@ -147,7 +140,7 @@ def pca():
         sample_grps = {}
         names = []
         data = []
-        with open(path,'r') as f:
+        with open(path, 'r') as f:
             for ln in f:
                 row = ln.split(',')
                 if 'name' in ln:
@@ -160,7 +153,6 @@ def pca():
                 else:
                     names.append(row[0])
                     data.append([float(x.replace('/n', '')) for x in row[1:]])
-        cnt = len(data[0])
         pca = PCA(n_components=2)
         # scale and center the data (though it seems fit_transform centers when
         # used alone)
@@ -192,9 +184,9 @@ def pca():
         context['pca_script'], context['pca_div'] = components(p)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
 
+
 @lipidx_bp.route('/file/<filename>')
 def file(filename):
     file_dir = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(file_dir, filename)
-
 

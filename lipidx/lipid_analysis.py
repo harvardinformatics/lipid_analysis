@@ -2,24 +2,20 @@ import csv
 import os
 import numpy
 import re
-from math import pi, isnan
+from math import pi
 from scipy.stats import ttest_ind
 import zipfile
-import re
-from flask import request
 from flask import current_app as app
 from collections import OrderedDict
 from lipidx.forms import LipidAnalysisForm
-import logging
 from bokeh.layouts import gridplot
-from bokeh.plotting import figure, show
-from bokeh.models import (HoverTool, ColumnDataSource, Whisker, DataRange1d,
-    Range1d, BoxAnnotation, Legend)
+from bokeh.plotting import figure
+from bokeh.models import (HoverTool, ColumnDataSource, Whisker, BoxAnnotation, Legend)
 from bokeh.embed import components
-from bokeh.sampledata.autompg import autompg as df
 from bokeh.palettes import d3
 from bokeh.io import export_svgs, export_png
 from multiprocessing import Pool
+
 
 class LipidAnalysis:
     MAX_GROUPS = 10
@@ -32,7 +28,7 @@ class LipidAnalysis:
         fa4, calcmz, ionformula, area, ratio, p_value'''
     MAX_VOLCANO_PLOTS = 3
 
-    def __init__ (self, paths, debug = False):
+    def __init__(self, paths, debug=False):
         self.paths = paths
         # debug adds cols to results to show pre normalized values
         self.debug = debug
@@ -69,12 +65,12 @@ class LipidAnalysis:
 
     def get_rows_from_files(self, paths):
         rows = OrderedDict()
-        cols = [] # cols common to all files
+        cols = []  # cols common to all files
         set_name = True
         for path in paths:
             if path:
-                with open(path,'r') as f:
-                    for i,ln in enumerate(f):
+                with open(path, 'r') as f:
+                    for i, ln in enumerate(f):
                         if i == 0:
                             row_cols = []
                         if (ln.startswith('#') or ln.startswith('\t') or
@@ -89,13 +85,13 @@ class LipidAnalysis:
                                 set_name = False
                                 row_cols = file_cols
                             else:
-                                row_cols = ['name', 'ret_time'] # these two columns added first
+                                row_cols = ['name', 'ret_time']  # these two columns added first
                                 row_cols.extend(file_cols)
-                        else: # data lines
+                        else:  # data lines
                             ln = ln.replace('\n', '')
                             file_row = re.split('\t|,', ln)
                             if set_name:
-                                row = ['', ''] # filler vals for name and ret_time
+                                row = ['', '']  # filler vals for name and ret_time
                                 row.extend(file_row)
                             else:
                                 row = file_row
@@ -104,29 +100,29 @@ class LipidAnalysis:
                             # lowercase the cols before creating dictionary
                             row_cols = [x.lower() for x in row_cols]
                             row_d = OrderedDict(zip(row_cols, row))
-                            if set_name: # not necessary if volcano only
+                            if set_name:  #  not necessary if volcano only
                                 # calc retention time: average of GroupTopPos
                                 ret_time = round(numpy.mean(self.list_col_type(row_d, 'grouptoppos')), self.ROUND_TO)
-                                row_d['ret_time'] = ret_time # add to row
+                                row_d['ret_time'] = ret_time  # add to row
                                 # unique name for row LipidIon + ret_time
                                 name = row_d['lipidion'] + '_' + str(ret_time)
                                 row_d['name'] = name
                             else:
                                 name = row_d['name']
-                            if name in rows: # rare case
+                            if name in rows:  # rare case
                                 # if lipid has same name then keep the one with
                                 # greater area
                                 avg_areas = self.list_col_type(row_d, self.area_start)
                                 avg_prev_areas = self.list_col_type(rows[name], self.area_start)
                                 if avg_areas > avg_prev_areas:
                                     rows[name] = row_d
-                            else: # add the new row
+                            else:  # add the new row
                                 rows[name] = row_d
 
                 # ensure cols are the same for all rows
-                if not cols: # set cols to first file
+                if not cols:  # set cols to first file
                     cols = row_cols
-                else: # after second file ensure cols in each row are the same
+                else:  # after second file ensure cols in each row are the same
                     cols = set(cols).intersection(row_cols)
                     for key, row in rows.items():
                         rows[key] = self.limit_row_cols(cols, row)
@@ -139,7 +135,7 @@ class LipidAnalysis:
                 del row[k]
         return row
 
-    def get_cols(self, start = None):
+    def get_cols(self, start=None):
         first = list(self.rows.keys())[0]
         keys = list(self.rows[first].keys())
         if start:
@@ -153,7 +149,7 @@ class LipidAnalysis:
         cols = list(res[0].keys())
         self.write_csv(self.lipid_results_path, cols, res)
         # save results with limited cols
-        self.remove_columns(self.LIMITED_COLS, whitelist = True)
+        self.remove_columns(self.LIMITED_COLS, whitelist=True)
         res = [x for y, x in sorted(self.rows.items(), key=lambda t: t[0].lower())]
         cols = list(res[0].keys())
         self.write_csv(self.lipid_results_limited_path, cols, res)
@@ -173,7 +169,7 @@ class LipidAnalysis:
         if self.rows:
             if not os.path.exists(self.root_path):
                 os.makedirs(self.root_path)
-            with open(path,'w') as c:
+            with open(path, 'w') as c:
                 w = csv.DictWriter(c, cols)
                 w.writeheader()
                 w.writerows(rows)
@@ -216,7 +212,7 @@ class LipidAnalysis:
                     blank_vals.append(float(row[col]))
             return round(numpy.mean(blank_vals), self.ROUND_TO)
 
-    def remove_columns(self, remove_cols, whitelist = False):
+    def remove_columns(self, remove_cols, whitelist=False):
         if self.rows:
             # ensure user entered cols are lowercase and without spaces
             remove_cols = [x.strip().lower() for x in remove_cols.split(',')]
@@ -229,11 +225,11 @@ class LipidAnalysis:
                     removed_cols.append(col)
             for name, row in self.rows.items():
                 new_row = OrderedDict()
-                if whitelist: # include only cols from input
+                if whitelist:  # include only cols from input
                     for col, val in row.items():
                         if col in removed_cols:
                             new_row[col] = val
-                else: # remove cols from input
+                else:  # remove cols from input
                     for col, val in row.items():
                         if col not in removed_cols:
                             new_row[col] = val
@@ -337,11 +333,11 @@ class LipidAnalysis:
         group_sn_max = max(self.list_col_type(row, 'groups/n'))
         if group_sn_max <= group_sn_fil:
             return False
-        if group_area_fil > 0: # all values are pos ints, so skip if 0
+        if group_area_fil > 0:  # all values are pos ints, so skip if 0
             group_area_max = max(self.list_col_type(row, 'grouparea'))
             if group_area_max <= group_area_fil:
                 return False
-        if group_height_fil > 0: # all values are pos ints, so skip if 0
+        if group_height_fil > 0:  # all values are pos ints, so skip if 0
             group_height_max = max(self.list_col_type(row, 'groupheight'))
             if group_height_max <= group_height_fil:
                 return False
@@ -353,7 +349,7 @@ class LipidAnalysis:
         # or input manual values
         if self.rows:
             normal = self.rows
-            #TODO: comma to seperate sample values in input S1-1 S1-2 etc
+            # TODO: comma to seperate sample values in input S1-1 S1-2 etc
             if form_data['normalize'] != 'none':
                 area_cols = self.get_cols(self.area_start)
                 # use manual values
@@ -378,7 +374,7 @@ class LipidAnalysis:
                         for col in area_cols:
                             sam = self.get_sample_from_col(col)
                             if intensities[sam] > 0:
-                                normal[name][col] = round(float(row[col])/intensities[sam],
+                                normal[name][col] = round(float(row[col]) / intensities[sam],
                                 self.POST_NORMAL_ROUND)
                 normal = self.recalc_avg(normal)
             self.rows = normal
@@ -422,9 +418,9 @@ class LipidAnalysis:
             stats = OrderedDict()
             # for each group recalc the avg and std from areas
             for group, nums in self.groups.items():
-                if group not in stats: # group like c, s1, s2
+                if group not in stats:  # group like c, s1, s2
                     stats[group] = []
-                for num in nums: # num replicates per group
+                for num in nums:  # num replicates per group
                     num_col = self.area_start + group + '-' + num + ']'
                     stats[group].append(float(row[num_col]))
             for group, val_lst in stats.items():
@@ -516,8 +512,8 @@ class LipidAnalysis:
 
     def load_lipid_classes(self):
         classes = {}
-        with open(self.lipid_class_path,'r') as f:
-            for i,ln in enumerate(f):
+        with open(self.lipid_class_path, 'r') as f:
+            for i, ln in enumerate(f):
                 ln = ln.replace('\n', '')
                 ln = ln.rstrip(',')
                 row = ln.split(',')
@@ -555,7 +551,7 @@ class LipidAnalysis:
                             'cnt': [],
                             'sum': [],
                             'x': [],
-                            'relative':[],
+                            'relative': [],
                     }
                 gr_data[group]['cnt'].append(stats['cnt'])
                 gr_data[group]['sum'].append(stats['sum'])
@@ -601,7 +597,7 @@ class LipidAnalysis:
         script, div = components(bars)
         return script, div
 
-    def bar_chart(self, pool, gr_data, data, x, y, title, y_label, x_range, y_range, std = None, y_axis_type = None):
+    def bar_chart(self, pool, gr_data, data, x, y, title, y_label, x_range, y_range, std=None, y_axis_type=None):
         if y_axis_type:
             bottom = 0.0000000001
         else:
@@ -632,7 +628,7 @@ class LipidAnalysis:
         chart_file_png = 'class_chart_' + title.replace(' ', '_').replace(',',
         '').lower() + '.png'
         chart_path_png = self.root_path + chart_file_png
-        pool.apply_async(export_png, (bar,), {'filename':chart_path_png})
+        pool.apply_async(export_png, (bar,), {'filename': chart_path_png})
         # save paths to zip
         self.paths_to_zip[chart_file_png] = chart_path_png
         return bar
@@ -753,5 +749,5 @@ class LipidAnalysis:
             self.paths_to_zip[vol_file_png] = vol_path_png
             plot_list.append([p])
         if plot_list:
-           script, div = components(gridplot(plot_list))
+            script, div = components(gridplot(plot_list))
         return script, div
