@@ -11,7 +11,7 @@ Lipidx is a Flask application with a number of graphics dependencies including t
     $ export PYTHONPATH=`pwd`
     $ python lipidx/run.py
 
-You should be able to see the application at http://localhost:5000/lipid_analysis/
+You should be able to see the application at http://localhost:5000/lipidx/lipid_analysis/
 
 ## Installation
 Lipidx can be deployed as a Docker container.
@@ -21,7 +21,7 @@ Lipidx can be deployed as a Docker container.
     $ docker build -t lipidx .
     $ docker run -d -p 8000:80 --name lipidx lipidx
 
-Once running, navigate to http://localhost:8000/lipid_analysis 
+Once running, navigate to http://localhost:8000/lipid_analysis
 
 For production, you should set the following environment variables:
 

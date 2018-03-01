@@ -628,7 +628,8 @@ class LipidAnalysis:
         chart_file_png = 'class_chart_' + title.replace(' ', '_').replace(',',
         '').lower() + '.png'
         chart_path_png = self.root_path + chart_file_png
-        pool.apply_async(export_png, (bar,), {'filename': chart_path_png})
+        #pool.apply_async(export_png, (bar,), {'filename': chart_path_png})
+        export_png(bar, filename=chart_path_png)
         # save paths to zip
         self.paths_to_zip[chart_file_png] = chart_path_png
         return bar
