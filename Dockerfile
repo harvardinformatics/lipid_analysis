@@ -1,7 +1,7 @@
 FROM continuumio/miniconda3
 EXPOSE 80
 RUN apt-get update -y && apt-get install -y nginx supervisor
-RUN echo "daemon off;" >> /etc/nginx/nginx.conf 
+RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 RUN conda install -y \
         flask \
         pillow \
@@ -11,7 +11,7 @@ RUN conda install -y \
         bokeh=0.12.6 \
         scikit-learn && \
     pip install flask_bootstrap flask_wtf gunicorn && \
-    conda install -c conda-forge phantomjs selenium
+    conda install -y -c conda-forge phantomjs selenium
 COPY etc/nginx.conf /etc/nginx/sites-available/default
 COPY etc/supervisor.conf /etc/supervisor/conf.d/app.conf
 ADD . /app
