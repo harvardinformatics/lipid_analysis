@@ -1,7 +1,7 @@
 import os
 import logging
 
-BASE_DIR = os.path.abspath( os.path.dirname( __file__ ) ) + '/lipidx/'
+BASE_DIR = os.path.abspath( os.path.dirname( __file__ ) )
 ADMINS = frozenset(os.environ.get('LIPIDX_ADMIN_EMAILS').split(','))
 WTF_CSRF_ENABLED = True
 SECRET_KEY = os.environ.get('LIPIDX_KEY','n`}UyR_r+9w2]%xZ~H?FRz^')
