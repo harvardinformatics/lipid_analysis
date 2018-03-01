@@ -9,7 +9,9 @@ Lipidx is a Flask application with a number of graphics dependencies including t
     $ git clone https://github.com/harvardinformatics/lipidx.git
     $ cd lipidx
     $ export PYTHONPATH=`pwd`
-    $ python lipidx/run.py
+    $ export FLASK_APP=lipidx
+    $ export FLASK_DEBUG=1
+    $ flask run
 
 You should be able to see the application at http://localhost:5000/lipidx/lipid_analysis/
 

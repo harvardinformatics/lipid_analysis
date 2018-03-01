@@ -18,7 +18,6 @@ from multiprocessing import Pool
 
 
 class LipidAnalysis:
-    MAX_GROUPS = 10
     MAX_CLASSES = 20
     ROUND_TO = 2
     POST_NORMAL_ROUND = 8
@@ -617,9 +616,16 @@ class LipidAnalysis:
             bar.add_layout(Whisker(source=errors, base='base', upper='upper',
                 lower='lower', level='annotation'))
         palette_key = 0
+        if len(gr_data) > 10:
+            max_groups = 20
+            category = 'Category20'
+        else:
+            max_groups = 10
+            category = 'Category10'
+
         for group, d in gr_data.items():
             bar.vbar(x = d[x], width = 0.5, top = d[y], bottom = bottom, legend
-                    = group, color = d3['Category10'][self.MAX_GROUPS][palette_key])
+                    = group, color = d3[category][max_groups][palette_key])
             palette_key += 1
         # TODO: clear all somehow and select all
         bar.legend.click_policy = 'hide'
