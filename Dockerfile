@@ -9,9 +9,9 @@ RUN conda install -y \
         scipy \
         pandas \
         bokeh=0.12.6 \
-        scikit-learn && \
-    pip install flask_bootstrap flask_wtf gunicorn && \
-    conda install -y -c conda-forge phantomjs selenium
+        scikit-learn
+RUN pip install flask_bootstrap flask_wtf gunicorn
+RUN conda install -y -c conda-forge phantomjs selenium
 COPY etc/nginx.conf /etc/nginx/sites-available/default
 COPY etc/supervisor.conf /etc/supervisor/conf.d/app.conf
 ADD . /app
