@@ -10,6 +10,9 @@ from bokeh.palettes import d3
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import numpy
+import logging
+
+logger = logging.getLogger()
 
 lipidx_bp = Blueprint('lipidx', __name__, static_folder='./static')
 
@@ -22,16 +25,23 @@ def lipid_analysis():
     context = {'params': {}}
     if debug:
         context['params'] = {'debug': True}
+    logger.debug("Checking form")
     if form.validate_on_submit():
+        logger.debug("Made it to the form validation")
         root_path = current_app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'file1.txt')
-        file2 = request.files[form.file2.name]
-        file2.save(root_path + 'file2.txt')
+       
         file1_path = root_path + 'file1.txt'
-        file2_path = root_path + 'file2.txt'
+ 
+        files = [file1_path]
+        if form.file2.name in request.files:
+            file2 = request.files[form.file2.name]
+            file2.save(root_path + 'file2.txt')
+            file2_path = root_path + 'file2.txt'
+            files.append(file2_path)
         start = time.time()
-        la = LipidAnalysis([file1_path, file2_path], debug)
+        la = LipidAnalysis(files, debug)
         curr = time.time()
         print('LA' + str(start - curr))
         la.remove_rejects()
@@ -77,6 +87,7 @@ def lipid_analysis():
         curr = time.time()
         print('volcano' + str(last - curr))
         zip_path = la.write_results()
+        logger.debug("Wrote Lipid Analysis output to file")
     return render_template('lipid_analysis.html', form=form, zip_path=zip_path, **context)
 
 
