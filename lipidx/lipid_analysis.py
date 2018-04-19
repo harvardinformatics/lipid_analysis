@@ -722,8 +722,8 @@ class LipidAnalysis:
             p = figure(title = ratio_name, x_axis_label = 'log2(ratio)', y_axis_label = '-log10(p value)', width = 1000, height = 800, toolbar_location = "above")
             hover = HoverTool(tooltips=[
                 ('name', "@lipid"),
-                ('ratio', "@log2"),
-                ('p value', "@p")
+                ('x', "@log2"),
+                ('y', "@p")
             ])
             p.add_tools(hover)
             # add highlight to interesting regions
