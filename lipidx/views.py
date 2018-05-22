@@ -1,6 +1,7 @@
 from flask import (request, current_app, render_template,
     send_from_directory, Blueprint)
 from lipidx.lipid_analysis import LipidAnalysis
+from lipidx.pca_analysis import PCAAnalysis
 from lipidx import forms
 import time
 from bokeh.plotting import figure
@@ -31,9 +32,9 @@ def lipid_analysis():
         root_path = current_app.config['UPLOAD_FOLDER']
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'file1.txt')
-       
+
         file1_path = root_path + 'file1.txt'
- 
+
         files = [file1_path]
         if form.file2.name in request.files:
             file2 = request.files[form.file2.name]
@@ -148,51 +149,10 @@ def pca():
         file1 = request.files[form.file1.name]
         file1.save(root_path + 'pca_file.txt')
         path = root_path + 'pca_file.txt'
-        sample_grps = {}
-        names = []
-        data = []
-        with open(path, 'r') as f:
-            for ln in f:
-                row = ln.split(',')
-                if 'name' in ln:
-                    samples = [x.replace('/n', '') for x in row[1:]]
-                    for i, s in enumerate(samples):
-                        prefix = s.split('_')[0]
-                        if prefix not in sample_grps:
-                            sample_grps[prefix] = []
-                        sample_grps[prefix].append(i)
-                else:
-                    names.append(row[0])
-                    data.append([float(x.replace('/n', '')) for x in row[1:]])
-        pca = PCA(n_components=2)
-        # scale and center the data (though it seems fit_transform centers when
-        # used alone)
-        std_data = StandardScaler().fit_transform(data)
-        data_pca = pca.fit_transform(std_data)
-        p = figure(
-                title = 'pca ploti',
-                x_axis_label = ('pc1: %.2f%%' % (pca.explained_variance_ratio_[0] *
-                    100)),
-                y_axis_label = ('pc2: %.2f%%' % (pca.explained_variance_ratio_[1] *
-                    100)),
-                width = 800, height = 800, toolbar_location = "above"
-        )
-        legend_items = []
-        palette_key = 1
-        for grp, indexes in sample_grps.items():
-            pc_1 = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
-            pc_2 = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
-            class_points = p.circle(pc_1, pc_2, size=10, color=d3['Category20'][20][palette_key])
-            palette_key += 1
-            legend_items.append((grp, [class_points]))
-        legend = Legend(
-                items = legend_items,
-                click_policy = 'hide',
-                location = (0, -30)
-        )
-        p.add_layout(legend, 'right')
+        pca = PCAAnalysis(path)
+        plot = pca.pca()
         context = {}
-        context['pca_script'], context['pca_div'] = components(p)
+        context['pca_script'], context['pca_div'] = components(plot)
     return render_template('pca.html', form=form, zip_path=zip_path, **context)
 
 
