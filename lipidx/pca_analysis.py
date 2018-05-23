@@ -88,7 +88,7 @@ class PCAAnalysis:
         return data
 
     def get_sample_groups(self, area_cols):
-        sample_grps = {}
+        sample_grps = OrderedDict()
         for i, col in enumerate(area_cols):
             prefix = col.split('-')[0].replace(self.area_start, '')
             if prefix not in sample_grps:
