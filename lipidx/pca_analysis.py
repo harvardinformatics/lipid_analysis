@@ -6,6 +6,7 @@ from bokeh.models import Legend
 from bokeh.palettes import d3
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from bokeh.models import HoverTool
 
 
 class PCAAnalysis:
@@ -51,12 +52,19 @@ class PCAAnalysis:
         )
         legend_items = []
         palette_key = 1
-        for grp, indexes in sample_grps.items():
-            pc_1 = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
-            pc_2 = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
-            class_points = p.circle(pc_1, pc_2, size=10, color=d3['Category20'][20][palette_key])
+        source = {}
+        for grp, data in sample_grps.items():
+            indexes = data['index']
+            source['pc_1'] = [x for i, x in enumerate(pca.components_[0]) if i in indexes]
+            source['pc_2'] = [y for i, y in enumerate(pca.components_[1]) if i in indexes]
+            source['name'] = data['sam']
+            class_points = p.circle('pc_1', 'pc_2', size=10, color=d3['Category20'][20][palette_key], source = source)
             palette_key += 1
             legend_items.append((grp, [class_points]))
+        hover = HoverTool(tooltips=[
+            ('name', "@name")
+        ])
+        p.add_tools(hover)
         legend = Legend(
                 items = legend_items,
                 click_policy = 'hide',
@@ -90,10 +98,12 @@ class PCAAnalysis:
     def get_sample_groups(self, area_cols):
         sample_grps = OrderedDict()
         for i, col in enumerate(area_cols):
-            prefix = col.split('-')[0].replace(self.area_start, '')
+            name = col.replace(self.area_start, '').replace(']', '')
+            prefix = name.split('-')[0]
             if prefix not in sample_grps:
-                sample_grps[prefix] = []
-            sample_grps[prefix].append(i)
+                sample_grps[prefix] = {'index': [], 'sam': []}
+            sample_grps[prefix]['index'].append(i)
+            sample_grps[prefix]['sam'].append(name)
         return sample_grps
 
     def limit_row_cols(self, cols, row):
