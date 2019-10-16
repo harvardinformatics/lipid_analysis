@@ -6,6 +6,7 @@ AcHexSiE,AcylGlcSitosterol ester,Neutral lipids,
 AcHexStE,AcylGlcStigmasterol ester,Neutral lipids,
 AcHexZyE,AcylGlcZymosterol ester,Neutral lipids,
 AEA,N-Acylethanolamine,Fatty acyl and other lipids,
+AGlcSiE,AcylGlcSitosterol ester,Steroid
 BiotinylPE,glycerophosphoethanolamine-N-(biotinyl),"Derivatized lipids (biotinylation, diazomethane)",
 BisMeLPA,Bis-methyl lysophosphatidic acid,"Derivatized lipids (biotinylation, diazomethane)",
 BisMePA,Bis-methyl phosphatidic acid,"Derivatized lipids (biotinylation, diazomethane)",
