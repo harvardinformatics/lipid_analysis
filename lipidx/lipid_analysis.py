@@ -10,7 +10,7 @@ from collections import OrderedDict
 from lipidx.forms import LipidAnalysisForm
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure
-from bokeh.models import (HoverTool, ColumnDataSource, Whisker, BoxAnnotation, Legend)
+from bokeh.models import (HoverTool, ColumnDataSource, Whisker, BoxAnnotation, Legend, FactorRange)
 from bokeh.embed import components
 from bokeh.palettes import d3
 from bokeh.io import export_svgs, export_png
@@ -528,7 +528,7 @@ class LipidAnalysis:
         # reorganize class_stats data for plotting
         # TODO: can we avoid the need for this regoranization?
         data = {
-                'lipid': [],
+                'lipid': set(),
                 'cnt': [],
                 'sum': [],
                 'std': [],
@@ -537,7 +537,7 @@ class LipidAnalysis:
                 'upper': [],
                 'relative': [],
         }
-        x = 1
+        x = 0.5
         # TODO: FactorRange for groups lipid axis
         gr_data = OrderedDict()
         group_list = []
@@ -558,7 +558,7 @@ class LipidAnalysis:
                 gr_data[group]['x'].append(x)
 
                 # lists of the data not organized by group used in plotting
-                data['lipid'].append(lipid_class)
+                data['lipid'].add(lipid_class)
                 data['cnt'].append(stats['cnt'])
                 data['sum'].append(stats['sum'])
                 data['std'].append(stats['std'])
@@ -566,9 +566,7 @@ class LipidAnalysis:
                 data['upper'].append(stats['sum'] + stats['std'])
                 data['x'].append(x)
                 x += 1
-            # put space between lipid groups
-            data['lipid'].append(lipid_class)
-            x += 1
+
         # get relative sums
         for lipid, groups in self.class_stats.items():
             for group, stats in groups.items():
@@ -580,6 +578,7 @@ class LipidAnalysis:
                 relative_percent = relative * 100
                 gr_data[group]['relative'].append(relative_percent)
                 data['relative'].append(relative_percent)
+        data['lipid'] = list(data['lipid'])
         pool = Pool(2)
         bar_cnt = self.bar_chart(pool, gr_data, data, 'x', 'cnt', 'Number of Lipids', 'nb of lipids', data['lipid'], data['cnt'])
         bar_sum = self.bar_chart(pool, gr_data, data, 'x', 'sum', 'Area', 'sum of area per group', data['lipid'], data['sum'], 'std')
@@ -587,13 +586,13 @@ class LipidAnalysis:
         bar_relative = self.bar_chart(pool, gr_data, data, 'x', 'relative', 'Relative area', 'sum of area per group / total sum of area %', data['lipid'], data['relative'])
         bar_log_relative = self.bar_chart(pool, gr_data, data, 'x', 'relative', 'Relative area, log', 'sum of area per group / total sum of area', data['lipid'], data['relative'], None, 'log')
         pool.close()
-        bars = gridplot(
+        bars = gridplot([
                 [bar_cnt],
                 [bar_sum],
                 [bar_log_sum],
                 [bar_relative],
                 [bar_log_relative]
-        )
+        ])
         script, div = components(bars)
         return script, div
 
@@ -604,6 +603,7 @@ class LipidAnalysis:
             bottom = 0
             y_axis_type = 'auto'
 
+        x_range = FactorRange(factors=x_range)
         bar = figure(title=title, y_axis_label = y_label,
                 x_range = x_range, width = 1500, y_axis_type
                 = y_axis_type)
@@ -728,9 +728,10 @@ class LipidAnalysis:
             ])
             p.add_tools(hover)
             # add highlight to interesting regions
-            box_lt = BoxAnnotation(plot=p, bottom=pvalue_highlight, right=(ratio_highlight * -1), fill_alpha=0.1, fill_color='red')
-            box_rt = BoxAnnotation(plot=p, bottom=pvalue_highlight, left=ratio_highlight, fill_alpha=0.1, fill_color='green')
-            p.renderers.extend([box_lt, box_rt])
+            box_lt = BoxAnnotation(bottom=pvalue_highlight, right=(ratio_highlight * -1), fill_alpha=0.1, fill_color='red')
+            box_rt = BoxAnnotation(bottom=pvalue_highlight, left=ratio_highlight, fill_alpha=0.1, fill_color='green')
+            p.add_layout(box_lt)
+            p.add_layout(box_rt)
 
             palette_key = 0
             legend_items = []
