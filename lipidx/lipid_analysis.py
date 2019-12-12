@@ -566,6 +566,7 @@ class LipidAnalysis:
                 data['upper'].append(stats['sum'] + stats['std'])
                 data['x'].append(x)
                 x += 1
+            x += 1.4
 
         # get relative sums
         for lipid, groups in self.class_stats.items():
@@ -603,12 +604,11 @@ class LipidAnalysis:
             bottom = 0
             y_axis_type = 'auto'
 
-        x_range = FactorRange(factors=x_range)
+        x_range = [(lipid, group) for lipid in x_range for group in self.groups]
         bar = figure(title=title, y_axis_label = y_label,
-                x_range = x_range, width = 1500, y_axis_type
+                x_range = FactorRange(*x_range), width = 1500, y_axis_type
                 = y_axis_type)
         bar.y_range.start = bottom
-        bar.xaxis.major_label_orientation = pi/4
         if std:
             base = data[x]
             upper = [u + data[std][i] for i, u in enumerate(data[y])]
@@ -631,6 +631,9 @@ class LipidAnalysis:
         # TODO: clear all somehow and select all
         bar.legend.click_policy = 'hide'
         bar.output_backend = 'svg'
+        bar.xaxis.major_label_orientation = "vertical"
+        bar.xaxis.subgroup_label_orientation = "normal"
+        bar.xaxis.group_label_orientation = 0.8
         # save the png for the zip file
         chart_file_png = 'class_chart_' + title.replace(' ', '_').replace(',',
         '').lower() + '.png'
