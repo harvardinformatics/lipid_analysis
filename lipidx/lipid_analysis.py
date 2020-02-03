@@ -648,10 +648,6 @@ class LipidAnalysis:
         ratio_name = group1 + '-over-' + group2
         ratio_col_name = 'ratio[' + ratio_name + ']'
         for key, row in self.rows.items():
-            # only calculate ratio if it's not already there
-            # it will already be there for ppl using volcano endpoint
-            if ratio_col_name in row:
-                return ratio_name
             dividend = float(row[self.group_area_start + group1 + ']'])
             divisor = float(row[self.group_area_start + group2 + ']'])
             # set ratio artificaly to 0.1 or 10 if zero
